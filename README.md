@@ -6,6 +6,8 @@ This is an **unofficial fork of [OrcaSlicer](https://github.com/OrcaSlicer/OrcaS
 
 One repository contains the modified slicer, a universal MCP server, and an agent skill. No self-hosted server, recipe-library account, or separate settings application is required.
 
+Fork releases use the upstream version plus an agent revision, such as `2.5.0-dev-agent.1`; MCP keeps its own version. See [versioning and upstream updates](docs/agent/DISTRIBUTION.md#updating-from-upstream).
+
 ## Why a separate build is needed
 
 MCP needs to work with the currently open project: inspect models and plates, change settings, retrieve slicing results, and select a device. The standard OrcaSlicer CLI does not provide this access to a running GUI. The official build does not include the AgentControl API used here; installing the MCP server alone does not add that API to an installed application.
@@ -76,7 +78,9 @@ The public build does not include personal Bambuddy certificates, tokens, a loca
 python3 -m http.server 8080 --directory website/dist --bind 127.0.0.1
 ```
 
-For GitHub Pages, select **GitHub Actions** as the source in Settings → Pages, then manually run the **Agent website** workflow. The website source stays in this repository.
+For GitHub Pages, select **GitHub Actions** as the source in Settings → Pages. The **Agent website** workflow publishes `website/dist/` automatically after website changes reach `main`; manual runs are also available. The rest of the repository is not uploaded to Pages.
+
+GitHub Pages mirror: https://outsid3rx.github.io/OrcaSlicer/. The primary SEO domain remains https://orca-agent.ru; Pages does not change its DNS.
 
 ## Development and verification
 

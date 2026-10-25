@@ -28,10 +28,9 @@ without JavaScript. The FAQ and manual instructions use HTML `details`.
 ## Hosting
 
 Publish the contents of `website/dist/` on any static host.
-For GitHub Pages, select **GitHub Actions** in Settings → Pages, then manually
-run the **Agent website** workflow. It checks the sources and publishes only
-`website/dist/`, without uploading the rest of the repository. These instructions
-do not assert that the workflow has been run.
+For GitHub Pages, select **GitHub Actions** as the source in Settings → Pages. The **Agent website** workflow publishes `website/dist/` automatically after website changes reach `main`; manual runs are also available. The rest of the repository is not uploaded to Pages.
+
+GitHub Pages mirror: https://outsid3rx.github.io/OrcaSlicer/. The primary SEO domain remains https://orca-agent.ru; Pages does not change its DNS.
 
 Paths are relative, so hosting under a GitHub Pages subdirectory also works.
 `.openai/hosting.json` contains only the Sites deployment identifier and

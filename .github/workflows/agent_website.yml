@@ -1,6 +1,9 @@
 name: Agent website
 
 on:
+  push:
+    branches: [main]
+    paths: ['website/**', '.github/workflows/agent_website.yml']
   workflow_dispatch:
 
 permissions:

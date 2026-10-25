@@ -26,9 +26,9 @@ python3 -m http.server 8080 --directory website/dist --bind 127.0.0.1
 ## Размещение
 
 Публикуйте содержимое `website/dist/` на любом статическом хостинге.
-Для GitHub Pages в Settings → Pages выберите **GitHub Actions**, затем вручную
-запустите workflow **Agent website**. Он проверяет исходники и публикует только
-`website/dist/`, не загружая остальной репозиторий. В этом чате workflow не запускался.
+Для GitHub Pages выберите **GitHub Actions** в Settings → Pages. Workflow **Agent website** автоматически публикует `website/dist/` после изменения сайта в `main`; ручной запуск также доступен. Остальная часть репозитория не загружается в Pages.
+
+Зеркало: https://outsid3rx.github.io/OrcaSlicer/. Основной SEO-домен остаётся https://orca-agent.ru; настройки DNS не меняются.
 
 Используются относительные пути: подходит и размещение в подкаталоге GitHub Pages.
 `.openai/hosting.json` содержит только идентификатор публикации Sites
