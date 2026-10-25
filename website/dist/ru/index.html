@@ -1,0 +1,853 @@
+<!doctype html>
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f2f2f2" />
+    <title>OrcaSlicer Agent — MCP для 3D-печати с ИИ</title>
+    <meta
+      name="description"
+      content="Открытый форк OrcaSlicer с локальным MCP: ИИ-агент подготавливает модели, меняет настройки и проверяет нарезку. Установка через агента или вручную."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://orca-agent.ru/ru/" />
+    <link rel="alternate" hreflang="en" href="https://orca-agent.ru/" />
+    <link rel="alternate" hreflang="ru" href="https://orca-agent.ru/ru/" />
+    <link rel="alternate" hreflang="x-default" href="https://orca-agent.ru/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="OrcaSlicer Agent" />
+    <meta
+      property="og:title"
+      content="OrcaSlicer Agent — MCP для 3D-печати с ИИ"
+    />
+    <meta
+      property="og:description"
+      content="Открытый форк OrcaSlicer с локальным MCP: ИИ-агент подготавливает модели, меняет настройки и проверяет нарезку. Установка через агента или вручную."
+    />
+    <meta property="og:url" content="https://orca-agent.ru/ru/" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta
+      property="og:image"
+      content="https://orca-agent.ru/assets/og-ru.png"
+    />
+    <meta
+      property="og:image:secure_url"
+      content="https://orca-agent.ru/assets/og-ru.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="OrcaSlicer Agent: ваш слайсер, теперь с ИИ-агентом. Открытый код и локальный MCP."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="OrcaSlicer Agent — MCP для 3D-печати с ИИ"
+    />
+    <meta
+      name="twitter:description"
+      content="Открытый форк OrcaSlicer с локальным MCP: ИИ-агент подготавливает модели, меняет настройки и проверяет нарезку. Установка через агента или вручную."
+    />
+    <meta
+      name="twitter:image"
+      content="https://orca-agent.ru/assets/og-ru.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="OrcaSlicer Agent: ваш слайсер, теперь с ИИ-агентом. Открытый код и локальный MCP."
+    />
+    <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../styles.css" />
+    <script src="../app.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "@id": "https://orca-agent.ru/ru/#software",
+        "name": "OrcaSlicer Agent",
+        "url": "https://orca-agent.ru/ru/",
+        "description": "Открытый форк OrcaSlicer с локальным MCP: ИИ-агент подготавливает модели, меняет настройки и проверяет нарезку. Установка через агента или вручную.",
+        "inLanguage": "ru",
+        "operatingSystem": "macOS",
+        "applicationCategory": "DesignApplication",
+        "isAccessibleForFree": true,
+        "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+        "sameAs": "https://github.com/outsid3rx/OrcaSlicer"
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Перейти к содержимому</a>
+    <div class="page-shell">
+      <header class="nav">
+        <a class="brand" href="#" aria-label="OrcaSlicer Agent — в начало">
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewbox="0 0 32 32">
+              <path
+                d="m5 11 11-6 11 6-11 6Z M5 16l11 6 11-6 M5 22l11 6 11-6"
+              ></path></svg
+          ></span>
+          <span>orca<span class="brand-agent"> / agent</span></span>
+        </a>
+        <nav aria-label="Основная навигация">
+          <a href="#features">Возможности</a><a href="#install">Установка</a
+          ><a href="#faq">Вопросы</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a
+            class="language-switch"
+            href="../"
+            lang="en"
+            hreflang="en"
+            aria-label="Switch to English"
+            >EN</a
+          ><a
+            class="pill nav-github"
+            href="https://github.com/outsid3rx/OrcaSlicer"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </header>
+      <main id="main">
+        <section class="hero" aria-labelledby="hero-title">
+          <p class="eyebrow">
+            <span class="status-dot" aria-hidden="true"></span> Открытый форк
+            OrcaSlicer для ИИ-агентов
+          </p>
+          <h1 id="hero-title">
+            Ваш слайсер.<br />Теперь с
+            <span class="headline-sticker" aria-hidden="true">✳</span>
+            <span class="agent-title">ИИ-агентом.</span>
+          </h1>
+          <p class="hero-description">
+            Расскажите, что хотите напечатать.<br class="desktop-break" />
+            Агент подготовит модель, применит настройки и проверит нарезку.
+          </p>
+          <div class="button-pair">
+            <a class="pill yellow" href="#install"
+              >Установить с ИИ <span aria-hidden="true">↗</span></a
+            ><a class="pill black" href="#workflow"
+              >Как это работает <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <p class="hero-note">
+            Локальный MCP · Ваш любимый агент · Проверено на macOS Apple Silicon
+          </p>
+        </section>
+
+        <section
+          class="product-demo"
+          aria-label="Демонстрация рабочего процесса"
+        >
+          <div class="demo-titlebar">
+            <div class="window-dots" aria-hidden="true">
+              <i></i><i></i><i></i>
+            </div>
+            <span>Задача → настройки → нарезка</span
+            ><span class="demo-label">Демонстрация</span>
+          </div>
+          <div class="demo-canvas">
+            <div class="conversation">
+              <div class="conversation-label">
+                <span class="tiny-star" aria-hidden="true">✳</span> Ваш агент
+              </div>
+              <div class="user-message">
+                Подготовь модель к печати.<br />Сделай стенки прочнее.
+              </div>
+              <div class="agent-message">
+                <span class="agent-avatar" aria-hidden="true">a</span>
+                <div>
+                  <p>Начну с проекта в OrcaSlicer.</p>
+                  <ul>
+                    <li>Проверю модель и выбранное окно</li>
+                    <li>Применю рецепт с 4 периметрами</li>
+                    <li>Покажу результат нарезки</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="settings-note">
+                <span class="check-icon" aria-hidden="true">✓</span>
+                <div>
+                  <strong>Изменения видны заранее</strong
+                  ><span>Периметры <b>2 → 4</b></span>
+                </div>
+                <span class="note-arrow" aria-hidden="true">↗</span>
+              </div>
+              <p class="demo-disclaimer">
+                Пример запроса. Без отправки на принтер.
+              </p>
+            </div>
+            <div class="native-preview">
+              <div class="preview-top">
+                <span class="preview-name"
+                  ><span class="mini-mark" aria-hidden="true">▱</span>
+                  OrcaSlicer</span
+                >
+                <div
+                  class="preview-tabs"
+                  role="group"
+                  aria-label="Вид демонстрации"
+                >
+                  <button
+                    class="preview-tab"
+                    data-view="model"
+                    aria-pressed="false"
+                  >
+                    Модель</button
+                  ><button
+                    class="preview-tab active"
+                    data-view="slice"
+                    aria-pressed="true"
+                  >
+                    Нарезка
+                  </button>
+                </div>
+              </div>
+              <div class="preview-image-area">
+                <img
+                  id="native-image"
+                  src="../assets/slice.png"
+                  width="512"
+                  height="512"
+                  alt="Реальный предпросмотр из OrcaSlicer: траектории печати двух тестовых кубов"
+                /><span class="image-tag" id="image-tag">Траектории печати</span
+                ><span class="plate-label">Стол 01</span>
+              </div>
+              <div class="preview-footer">
+                <span
+                  ><span class="blue-dot" aria-hidden="true"></span> Реальный
+                  предпросмотр через MCP</span
+                ><span id="view-status">Нарезка</span>
+              </div>
+            </div>
+            <span class="demo-connector" aria-hidden="true">↗</span>
+          </div>
+        </section>
+        <div class="principles" aria-label="Принципы проекта">
+          <span>Открытый код</span><i aria-hidden="true">✳</i
+          ><span>Инструменты работают локально</span><i aria-hidden="true">✳</i
+          ><span>Без отдельного backend</span><i aria-hidden="true">✳</i
+          ><span>Любой stdio MCP-клиент</span>
+        </div>
+
+        <section id="features" class="section" aria-labelledby="features-title">
+          <div class="section-intro">
+            <p class="kicker">Меньше кликов. Больше дела.</p>
+            <h2 id="features-title">
+              Вы ставите задачу.<br />Агент берёт рутину.
+            </h2>
+            <p>
+              Инструменты для работы с проектом —<br class="desktop-break" />
+              от загрузки модели до подготовки задания.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="feature-art models-art" aria-hidden="true">
+                <span class="file-chip">деталь.stl</span
+                ><svg viewbox="0 0 190 115">
+                  <path d="m56 33 42-23 42 23-42 24Z" fill="#466cf3"></path>
+                  <path d="m56 33 42 24v44L56 78Z" fill="#e6e51e"></path>
+                  <path
+                    d="m98 57 42-24v45l-42 23Z"
+                    fill="#ffffff"
+                    stroke="#000"
+                    stroke-width="1.5"
+                  ></path>
+                  <path
+                    d="M24 100h136M34 107l7-30m16 30 7-30m93 30 7-30"
+                    stroke="#000"
+                    stroke-width="1"
+                  ></path></svg
+                ><span class="art-tag">Стол 01 <b>+</b> Стол 02</span>
+              </div>
+              <h3>Модели и столы</h3>
+              <p>
+                Загрузить файл, расположить детали, создать стол или разделить
+                модель на части.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-art settings-art" aria-hidden="true">
+                <span class="recipe-chip">✳ Легко отделяемые поддержки</span>
+                <div><span>Поддержки</span><span class="toggle-on"></span></div>
+                <div><span>Только от стола</span><b>✓</b></div>
+                <div><span>Периметры</span><b class="number-chip">4</b></div>
+              </div>
+              <h3>Настройки и рецепты</h3>
+              <p>
+                Поддержки, мосты, разглаживание и наборы настроек, которые можно
+                хранить и передавать.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-art materials-art" aria-hidden="true">
+                <span class="material-label">AMS · пример слотов</span>
+                <div class="spools">
+                  <i class="spool blue-spool"><span>01</span></i
+                  ><i class="spool yellow-spool"><span>02</span></i
+                  ><i class="spool red-spool"><span>03</span></i
+                  ><i class="spool empty-spool"><span>—</span></i>
+                </div>
+                <span class="material-chip">PLA · нужный слот выбран</span>
+              </div>
+              <h3>Принтер и материалы</h3>
+              <p>
+                Выбрать устройство, синхронизировать поддерживаемое сопло и
+                сопоставить филаменты с AMS.
+              </p>
+            </article>
+            <article class="feature-card">
+              <div class="feature-art report-art" aria-hidden="true">
+                <div class="report-top">Готово к проверке <span>↗</span></div>
+                <div class="report-row">
+                  <span>Время и материал</span><b>✓</b>
+                </div>
+                <div class="report-row">
+                  <span>Предпросмотр нарезки</span><b>✓</b>
+                </div>
+                <div class="report-row">
+                  <span>Изменённые настройки</span><b>✓</b>
+                </div>
+              </div>
+              <h3>Нарезка и отправка</h3>
+              <p>
+                Проверить траектории, оценить время и расход материала,
+                подготовить задание для принтера.
+              </p>
+            </article>
+          </div>
+          <p class="section-footnote">
+            Доступные операции зависят от сборки и принтера. Агент читает
+            возможности текущего окна, а не угадывает их.
+          </p>
+        </section>
+
+        <section
+          id="workflow"
+          class="section workflow"
+          aria-labelledby="workflow-title"
+        >
+          <div class="section-intro">
+            <p class="kicker">Три части. Один рабочий процесс.</p>
+            <h2 id="workflow-title">
+              Слайсер делает своё.<br />Агент знает, что делать.
+            </h2>
+          </div>
+          <div class="workflow-grid">
+            <article>
+              <span class="step-number">01</span>
+              <h3>OrcaSlicer + API</h3>
+              <p>
+                Отдельная сборка форка открывает доступ к проекту. Вы явно
+                включаете управление и выбираете папки для файлов.
+              </p>
+              <span class="workflow-tag">Действия в слайсере</span>
+            </article>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <article>
+              <span class="step-number">02</span>
+              <h3>Локальный MCP</h3>
+              <p>
+                Связывает ваш ИИ-клиент со слайсером: передаёт команды и
+                возвращает состояние, результаты и изображения.
+              </p>
+              <span class="workflow-tag">28 инструментов</span>
+            </article>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <article>
+              <span class="step-number">03</span>
+              <h3>Навык агента</h3>
+              <p>
+                Объясняет порядок работы: какое окно выбрать, что проверить и
+                когда запросить разрешение на отправку.
+              </p>
+              <span class="workflow-tag">Проверки и порядок</span>
+            </article>
+          </div>
+          <div class="fork-note">
+            <span class="fork-symbol" aria-hidden="true">↳</span>
+            <p>
+              <strong>Почему именно форк?</strong> Обычная OrcaSlicer не
+              содержит нужного API для управления открытым проектом. CLI не
+              заменяет работу с текущими моделями, столами и устройствами в окне
+              приложения.
+            </p>
+            <a
+              href="https://github.com/outsid3rx/OrcaSlicer"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Посмотреть исходники <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </section>
+
+        <section
+          id="install"
+          class="section install"
+          aria-labelledby="install-title"
+        >
+          <div class="section-intro">
+            <p class="kicker">Начните с одного сообщения</p>
+            <h2 id="install-title">
+              Поручите установку
+              <span class="small-sticker" aria-hidden="true">✳</span
+              ><br />своему агенту.
+            </h2>
+            <p>
+              Скопируйте промпт в любимый агент с поддержкой MCP.<br
+                class="desktop-break"
+              />
+              Он проверит окружение и проведёт вас через установку.
+            </p>
+          </div>
+          <div class="install-card">
+            <div class="install-topline">
+              <span class="recommend-label">Рекомендуем</span
+              ><span class="platform-label">macOS · Apple Silicon</span>
+            </div>
+            <div class="install-main">
+              <div class="install-copy">
+                <h3>
+                  Промпт вместо<br />
+                  десятка шагов.
+                </h3>
+                <p>
+                  Один MCP для любого совместимого агента. Агент проверит ваш
+                  клиент, установит сервер и навык и поможет подключиться к
+                  слайсеру.
+                </p>
+                <div
+                  class="client-strip"
+                  aria-label="Примеры совместимых MCP-клиентов"
+                >
+                  <span>Codex</span><span>Claude Desktop</span
+                  ><span>Cursor</span><span>Windsurf</span><span>ZCode</span>
+                </div>
+
+                <div class="button-pair install-actions">
+                  <button
+                    id="copy-prompt"
+                    class="pill yellow"
+                    data-copy="install-prompt"
+                  >
+                    Скопировать промпт
+                    <span aria-hidden="true">↗</span></button
+                  ><a class="pill black" href="#manual"
+                    >Вручную <span aria-hidden="true">↓</span></a
+                  >
+                </div>
+                <p class="quiet-note">
+                  Промпт не разрешает отправку печати и управление заданиями на
+                  принтере.
+                </p>
+              </div>
+              <div class="prompt-panel">
+                <div class="prompt-heading">
+                  <span class="tiny-star" aria-hidden="true">✳</span
+                  ><span>Сообщение вашему агенту</span
+                  ><span class="prompt-file">установка.txt</span>
+                </div>
+                <pre id="install-prompt" tabindex="0">
+Помоги установить OrcaSlicer Agent из https://github.com/outsid3rx/OrcaSlicer и подключить его к моему ИИ-агенту через MCP.
+
+Изучи README и docs/agent/INSTALL.md выбранной версии. Проверь ОС, архитектуру и доступные релизы. MCP универсальный: используй мой текущий клиент с поддержкой stdio; если клиент не определён, уточни его. Используй совместимую сборку именно этого форка с AgentControl и проверь manifest и контрольные суммы. Если нужных файлов или совместимого релиза нет, объясни это и остановись — обычная OrcaSlicer не заменяет этот форк.
+
+Перед заменой приложения помоги сохранить проекты и пользовательский сертификат, если он добавлен внутрь .app. Не удаляй профили, базу рецептов и журналы операций.
+
+Установи MCP и навык штатным scripts/agent/install.sh. Для клиентов со штатной поддержкой установщика используй нужные --client; для остальных получи универсальную конфигурацию stdio и подключи встроенный навык по документации клиента. Если навыки не поддерживаются, используй его инструкции как руководство для агента. Если нужен uv, объясни способ его установки. Выполни doctor и помоги переподключить MCP.
+
+Уточни разрешённые папки моделей и экспорта. Запусти Orca с ORCA_AGENT_CONTROL=1 и этими папками. Через MCP проверь orca_list_instances, явный выбор окна и доступные возможности. Успех doctor сам по себе не доказывает подключение к окну Orca.
+
+Не включай ORCA_AGENT_PRINTING=1 и ничего не отправляй на принтер в ходе установки. В конце покажи версии, расположение MCP и результаты проверок.</pre
+                >
+                <div class="prompt-bottom">
+                  Читаемый промпт. Никаких скрытых команд.
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="install-availability">
+            Проект развивается. Перед установкой проверьте состав доступного
+            релиза.
+            <a
+              href="https://github.com/outsid3rx/OrcaSlicer/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Проверить релизы ↗</a
+            >
+          </p>
+
+          <details id="manual" class="manual">
+            <summary>
+              <span
+                ><span class="manual-index">02</span> Предпочитаете установить
+                вручную?</span
+              ><span class="summary-symbol" aria-hidden="true">+</span>
+            </summary>
+            <div class="manual-body">
+              <p class="manual-intro">
+                Ниже — инструкция для macOS Apple Silicon. Понадобятся сборка
+                форка, архив установщика MCP и
+                <a
+                  href="https://docs.astral.sh/uv/getting-started/installation/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >uv</a
+                >. Поддержка других платформ этим не подтверждается.
+              </p>
+              <ol class="manual-steps">
+                <li>
+                  <div>
+                    <h4>Возьмите совместимый комплект</h4>
+                    <p>
+                      Откройте
+                      <a
+                        href="https://github.com/outsid3rx/OrcaSlicer/releases"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >релизы форка</a
+                      >. Найдите DMG и установочный архив из одного комплекта,
+                      проверьте <code>release-manifest.json</code> и
+                      <code>SHA256SUMS</code>. Если их нет, дождитесь релиза;
+                      обычная OrcaSlicer не подойдёт.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <h4>Установите OrcaSlicer</h4>
+                    <p>
+                      Сохраните проекты и закройте приложение. Перенесите сборку
+                      из DMG в Applications. Личный CA Bambuddy в публичный DMG
+                      не входит: сохраните его отдельно перед заменой
+                      приложения.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <h4>Установите MCP и навык</h4>
+                    <p>
+                      Распакуйте установочный архив и откройте терминал в его
+                      папке. Установите MCP и добавьте выданную конфигурацию в
+                      свой клиент. Установщик сохраняет остальные настройки
+                      клиентов и создаёт резервные копии.
+                    </p>
+                    <div class="code-block">
+                      <pre id="install-command" tabindex="0">
+./scripts/agent/install.sh install
+./scripts/agent/install.sh doctor</pre
+                      >
+                      <button
+                        class="copy-code"
+                        data-copy="install-command"
+                        aria-label="Скопировать команды установки"
+                      >
+                        Копировать
+                      </button>
+                    </div>
+                    <p class="manual-caption" id="client-help">
+                      Без <code>--client</code> установщик ставит сервер и
+                      выдаёт конфигурацию stdio для вашего клиента. Навык из
+                      <code>skills/orca-mcp-control/</code> подключите по
+                      документации клиента; если навыки не поддерживаются,
+                      используйте его инструкции как руководство для агента. Для
+                      автоматической настройки Codex или ZCode добавьте
+                      <code>--client codex</code> или
+                      <code>--client zcode</code> к командам выше.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <h4>Разрешите работу со слайсером</h4>
+                    <p>
+                      Создайте папки для моделей и экспорта. Замените примеры
+                      ниже на их существующие абсолютные пути и запустите
+                      бинарник напрямую. Обычный запуск через иконку API не
+                      включает.
+                    </p>
+                    <div class="code-block launch-block">
+                      <pre id="launch-command" tabindex="0">
+ORCA_AGENT_CONTROL=1 \
+ORCA_AGENT_INPUT_ROOTS='["/Users/you/3D/models"]' \
+ORCA_AGENT_OUTPUT_ROOTS='["/Users/you/3D/exports"]' \
+/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer</pre
+                      >
+                      <button
+                        class="copy-code"
+                        data-copy="launch-command"
+                        aria-label="Скопировать шаблон запуска OrcaSlicer"
+                      >
+                        Копировать
+                      </button>
+                    </div>
+                    <p class="manual-caption">
+                      Если Orca уже открыта без API, сначала сохраните проект и
+                      закройте её. Смена окружения не меняет запущенный процесс.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <div>
+                    <h4>Проверьте подключение</h4>
+                    <p>
+                      Попросите агента вызвать <code>orca_list_instances</code>,
+                      выбрать нужную пару <code>session_id / window_id</code> и
+                      прочитать возможности окна. Несколько окон поддерживаются.
+                      Тестовая печать для проверки подключения не нужна.
+                    </p>
+                  </div>
+                </li>
+              </ol>
+              <a
+                class="text-link"
+                href="https://github.com/outsid3rx/OrcaSlicer/blob/main/docs/agent/INSTALL.ru.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Полная инструкция в репозитории ↗</a
+              >
+            </div>
+          </details>
+          <noscript
+            ><p class="no-js">
+              JavaScript выключен: выделите и скопируйте промпт или команды
+              вручную. Переключение языка и ручная инструкция работают без
+              JavaScript.
+            </p></noscript
+          >
+        </section>
+
+        <section
+          id="faq"
+          class="section faq-section"
+          aria-labelledby="faq-title"
+        >
+          <div class="section-intro faq-intro">
+            <p class="kicker">Хорошие вопросы</p>
+            <h2 id="faq-title">
+              Давайте<br />
+              разберёмся.
+            </h2>
+            <p>
+              Ещё остались вопросы?<br /><a
+                href="https://github.com/outsid3rx/OrcaSlicer/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Обсудим на GitHub ↗</a
+              >
+            </p>
+          </div>
+          <div class="faq-list">
+            <details>
+              <summary>
+                Это официальный OrcaSlicer?<span aria-hidden="true">+</span>
+              </summary>
+              <div>
+                <p>
+                  Нет. Это открытый неофициальный форк
+                  <a
+                    href="https://github.com/OrcaSlicer/OrcaSlicer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >OrcaSlicer</a
+                  >, который добавляет нативный AgentControl API. Он нужен,
+                  чтобы внешний агент работал с текущим проектом, настройками и
+                  устройствами. Отдельный MCP связывает API с вашим ИИ-клиентом.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                С каким ИИ-агентом это работает?<span aria-hidden="true"
+                  >+</span
+                >
+              </summary>
+              <div>
+                <p>
+                  С любым клиентом, который поддерживает MCP через stdio:
+                  например, Codex, Claude Desktop, Cursor, Windsurf или ZCode.
+                  Установщик автоматически настраивает Codex и ZCode, а без
+                  <code>--client</code> выдаёт универсальную конфигурацию для
+                  остальных. Доступность MCP зависит от версии и настроек
+                  клиента; конкретную ИИ-модель вы выбираете сами.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Агент сразу сможет отправить печать?<span aria-hidden="true"
+                  >+</span
+                >
+              </summary>
+              <div>
+                <p>
+                  Нет. При обычном запуске API выключен.
+                  <code>ORCA_AGENT_CONTROL=1</code> разрешает работу со
+                  слайсером, а выбранные папки ограничивают импорт и экспорт
+                  файлов. Для отправки заданий и управления устройством отдельно
+                  нужен <code>ORCA_AGENT_PRINTING=1</code> в окружении Orca.
+                  Установочный промпт его не включает.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Перед отправкой на печать будет подтверждение?<span
+                  aria-hidden="true"
+                  >+</span
+                >
+              </summary>
+              <div>
+                <p>
+                  Навык требует разрешения перед отправкой, кроме задания,
+                  которое вы уже явно одобрили, или принтера с
+                  <code>virtual</code> в имени. Отчёт включает время, расход
+                  материала, скриншот нарезки и изменения настроек. При обычном
+                  подтверждении он показывается до отправки, при исключении —
+                  после неё.
+                </p>
+                <p>
+                  Имя <code>virtual</code> обычно используют для прокси и
+                  очередей, например Bambuddy. Оно не гарантирует, что
+                  физическая печать не начнётся. Неопределённый результат
+                  отправки нельзя автоматически повторять.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Всё работает только на моём компьютере?<span aria-hidden="true"
+                  >+</span
+                >
+              </summary>
+              <div>
+                <p>
+                  MCP и библиотека рецептов работают локально, отдельный backend
+                  проекта не нужен. При этом выбранный вами ИИ-клиент может
+                  отправлять контекст модели в облако согласно своим настройкам.
+                  «Локальный MCP» не означает, что сам ИИ обязательно локальный.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Что такое рецепты настроек?<span aria-hidden="true">+</span>
+              </summary>
+              <div>
+                <p>
+                  Это наборы параметров для конкретной области проекта:
+                  например, настройки поддержек или разглаживания. Они хранятся
+                  в локальной SQLite-базе отдельно от приложения. Есть редакции,
+                  проверка совместимости, объединение рецептов и обмен
+                  JSON-дампами. Агент показывает изменения перед применением;
+                  несовместимые параметры не заменяются молча.
+                </p>
+                <p>
+                  Дамп предназначен для обмена рецептами и не заменяет резервную
+                  копию базы с операционными квитанциями.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Есть Windows и Linux? А другие принтеры?<span aria-hidden="true"
+                  >+</span
+                >
+              </summary>
+              <div>
+                <p>
+                  Комплект локально проверен на macOS Apple Silicon. Текущий
+                  установщик работает на macOS; Windows и Linux пока не
+                  считаются проверенными. Возможности печати зависят от
+                  устройства и backend: наличие поддержки в обычном Orca не
+                  гарантирует доступность любой операции через агента.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Как обновляться? Что с сертификатом Bambuddy?<span
+                  aria-hidden="true"
+                  >+</span
+                >
+              </summary>
+              <div>
+                <p>
+                  Обновляйте приложение сборкой этого форка. Официальная сборка
+                  уберёт AgentControl. В новых сборках форка автоматическая
+                  проверка обновления приложения через upstream выключена;
+                  ручная команда открывает релизы форка.
+                </p>
+                <p>
+                  MCP обновляется отдельно с сохранением рецептов и журналов.
+                  Публичный DMG не содержит личного CA Bambuddy. Если сертификат
+                  добавлен внутрь <code>.app</code>, при замене приложения это
+                  изменение теряется — сохраните оригинал заранее.
+                  Автоматический перенос сертификата пока не реализован.
+                </p>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="closing section" aria-labelledby="closing-title">
+          <p class="kicker">Ваш следующий проект — чуть проще</p>
+          <h2 id="closing-title">
+            Меньше настраивать.<br />Больше
+            <span class="closing-highlight">создавать.</span>
+          </h2>
+          <div class="button-pair">
+            <a class="pill yellow" href="#install"
+              >Начать с промпта <span aria-hidden="true">↗</span></a
+            ><a
+              class="pill black"
+              href="https://github.com/outsid3rx/OrcaSlicer"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Открыть GitHub <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </section>
+      </main>
+      <footer>
+        <a class="brand" href="#"
+          ><span class="brand-mark small" aria-hidden="true"
+            ><svg viewbox="0 0 32 32">
+              <path
+                d="m5 11 11-6 11 6-11 6Z M5 16l11 6 11-6 M5 22l11 6 11-6"
+              ></path></svg></span
+          ><span>orca<span class="brand-agent"> / agent</span></span></a
+        >
+        <p>Неофициальный форк OrcaSlicer · Открытый код · AGPL-3.0</p>
+        <div>
+          <a
+            href="https://github.com/OrcaSlicer/OrcaSlicer"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Исходный проект ↗</a
+          ><a
+            href="https://github.com/outsid3rx/OrcaSlicer/blob/main/LICENSE.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Лицензия ↗</a
+          >
+        </div>
+      </footer>
+    </div>
+    <div
+      id="copy-status"
+      class="copy-status"
+      role="status"
+      aria-live="polite"
+    ></div>
+  </body>
+</html>
