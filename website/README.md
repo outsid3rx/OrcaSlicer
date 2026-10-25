@@ -66,7 +66,8 @@ support; Inter is used for body text.
 and browser tab. `dist/assets/logo.png` is its 512px transparent export for the
 Pillow social-card generator; both localized cards use this same mark. The SVG
 refines the rounded concept generated in Canva, with equal 10-unit layer spacing
-and a 3.6-unit stroke. When changing the SVG, refresh its PNG before the cards
+and a 3.6-unit stroke. The symbol is centered at 88% scale to leave more internal
+padding. When changing the SVG, refresh its PNG before the cards
 (Node.js with `sharp` installed is needed only for this export):
 
 ```sh
