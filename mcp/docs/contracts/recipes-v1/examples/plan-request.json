@@ -1,0 +1,31 @@
+{
+  "tool": "orca_recipe_apply",
+  "arguments": {
+    "action": "plan",
+    "parameters": {
+      "recipes": [
+        {
+          "recipe_id": "20000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "sha256": "6c0bb016451549007f2465aa645abd7c2be4e2a5aa3a48fc15f7917dfec7f7a5"
+        },
+        {
+          "recipe_id": "20000000-0000-4000-8000-000000000002",
+          "revision": 1,
+          "sha256": "cf7b916ad4c2bdb74e8be56469c4778045b8e0e2c3bf82127ef309ab5d340fad"
+        }
+      ],
+      "binding": {
+        "target": {
+          "session_id": "30000000-0000-4000-8000-000000000001",
+          "window_id": "30000000-0000-4000-8000-000000000002"
+        },
+        "scope": "object",
+        "plate_id": "plate:12:0",
+        "object_id": "80",
+        "state_token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "request_id": "40000000-0000-4000-8000-000000000001"
+  }
+}

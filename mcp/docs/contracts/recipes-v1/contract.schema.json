@@ -1,0 +1,1958 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:orca-slicer-mcp:recipes:v1",
+  "title": "Orca MCP recipe library contract v1 — draft",
+  "$defs": {
+    "RevisionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "recipe_id",
+        "revision",
+        "sha256"
+      ]
+    },
+    "Scope": {
+      "type": "string",
+      "enum": [
+        "process",
+        "plate",
+        "object",
+        "volume",
+        "height_range"
+      ]
+    },
+    "Values": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,127}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minProperties": 1,
+      "maxProperties": 256
+    },
+    "Compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "printer_model_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "filament_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "nozzle_diameters_mm": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,3})(\\.[0-9]{1,6})?$"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "layer_height_mm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,3})(\\.[0-9]{1,6})?$"
+            },
+            "max": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,3})(\\.[0-9]{1,6})?$"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ]
+        }
+      },
+      "required": []
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "reported_print_test"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "printer_model_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "filament_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "nozzle_diameter_mm": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,3})(\\.[0-9]{1,6})?$"
+        },
+        "orca_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "satisfactory",
+            "unsatisfactory"
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2048
+        },
+        "layer_height_mm": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,3})(\\.[0-9]{1,6})?$"
+        }
+      },
+      "required": [
+        "kind",
+        "observed_at",
+        "printer_model_id",
+        "filament_type",
+        "nozzle_diameter_mm",
+        "orca_version",
+        "outcome",
+        "notes"
+      ]
+    },
+    "Author": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RecipeDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 4096
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "minItems": 0,
+          "maxItems": 24,
+          "uniqueItems": true
+        },
+        "author": {
+          "$ref": "#/$defs/Author"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "values": {
+          "$ref": "#/$defs/Values"
+        },
+        "compatibility": {
+          "$ref": "#/$defs/Compatibility"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "deprecated": {
+          "type": "boolean"
+        },
+        "deprecation_note": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "scope",
+        "values",
+        "compatibility"
+      ]
+    },
+    "NativeContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol_version": {
+          "const": 1
+        },
+        "api_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "app_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "definitions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,127}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "native_type": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "native_type",
+              "sha256"
+            ]
+          },
+          "minProperties": 1,
+          "maxProperties": 256
+        }
+      },
+      "required": [
+        "protocol_version",
+        "api_revision",
+        "app_version",
+        "definitions"
+      ]
+    },
+    "RecipePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 4096
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "minItems": 0,
+          "maxItems": 24,
+          "uniqueItems": true
+        },
+        "author": {
+          "$ref": "#/$defs/Author"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "values": {
+          "$ref": "#/$defs/Values"
+        },
+        "compatibility": {
+          "$ref": "#/$defs/Compatibility"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "deprecated": {
+          "type": "boolean"
+        },
+        "deprecation_note": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2048
+        },
+        "format": {
+          "const": "orca.recipe"
+        },
+        "format_version": {
+          "const": 1
+        },
+        "recipe_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "derived_from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native_contract": {
+          "$ref": "#/$defs/NativeContract"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "scope",
+        "values",
+        "compatibility",
+        "format",
+        "format_version",
+        "recipe_id",
+        "revision",
+        "created_at",
+        "parent",
+        "derived_from",
+        "native_contract"
+      ]
+    },
+    "RecipeRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "payload": {
+          "$ref": "#/$defs/RecipePayload"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "payload",
+        "sha256"
+      ]
+    },
+    "Head": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/RevisionRef"
+        },
+        "archived": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ref",
+        "archived"
+      ]
+    },
+    "Dump": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "orca.recipe-library"
+        },
+        "format_version": {
+          "const": 1
+        },
+        "exported_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecipeRecord"
+          },
+          "minItems": 0,
+          "maxItems": 4096
+        },
+        "heads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Head"
+          },
+          "minItems": 0,
+          "maxItems": 1024
+        }
+      },
+      "required": [
+        "format",
+        "format_version",
+        "exported_at",
+        "recipes",
+        "heads"
+      ]
+    },
+    "Target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "window_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "session_id",
+        "window_id"
+      ]
+    },
+    "Binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "scope": {
+              "const": "process"
+            },
+            "plate_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "state_token": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "target",
+            "scope",
+            "plate_id",
+            "state_token"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "scope": {
+              "const": "plate"
+            },
+            "plate_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "state_token": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "target",
+            "scope",
+            "plate_id",
+            "state_token"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "scope": {
+              "const": "object"
+            },
+            "plate_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "state_token": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "object_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "target",
+            "scope",
+            "plate_id",
+            "state_token",
+            "object_id"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "scope": {
+              "const": "volume"
+            },
+            "plate_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "state_token": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "object_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "volume_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "target",
+            "scope",
+            "plate_id",
+            "state_token",
+            "object_id",
+            "volume_id"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "scope": {
+              "const": "height_range"
+            },
+            "plate_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "state_token": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "object_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "height_range": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "target",
+            "scope",
+            "plate_id",
+            "state_token",
+            "object_id",
+            "height_range"
+          ]
+        }
+      ]
+    },
+    "Resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,127}$"
+        },
+        "chosen_value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "key",
+        "chosen_value"
+      ]
+    },
+    "Warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "acknowledgement_required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "message",
+        "acknowledgement_required"
+      ]
+    },
+    "Diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,127}$"
+        },
+        "before_effective": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 4096
+        },
+        "before_own": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "changes_ownership": {
+          "type": "boolean"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevisionRef"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "key",
+        "before_effective",
+        "before_own",
+        "after",
+        "changes_ownership",
+        "sources"
+      ]
+    },
+    "Plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "library_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "binding": {
+          "$ref": "#/$defs/Binding"
+        },
+        "recipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevisionRef"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "values": {
+          "$ref": "#/$defs/Values"
+        },
+        "schema_fingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "native_request_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "validation_level": {
+          "const": "schema_checked_native_validation_pending"
+        },
+        "diff": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Diff"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Warning"
+          },
+          "minItems": 0,
+          "maxItems": 64
+        },
+        "native_request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "plan_id",
+        "library_id",
+        "plan_sha256",
+        "created_at",
+        "expires_at",
+        "binding",
+        "recipes",
+        "values",
+        "schema_fingerprint",
+        "native_request_bytes",
+        "validation_level",
+        "diff",
+        "warnings",
+        "native_request_id"
+      ]
+    },
+    "Operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "dispatching",
+            "observing",
+            "succeeded",
+            "failed",
+            "outcome_unknown"
+          ]
+        },
+        "native_request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "native_job_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native_state": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "queued",
+                "running",
+                "succeeded",
+                "failed",
+                "cancelled",
+                "unknown"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "matched",
+            "unchanged",
+            "not_matched",
+            "superseded",
+            "unavailable"
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "required": [
+                "kind",
+                "message"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "none",
+                "observe_job",
+                "inspect_scene_do_not_resend"
+              ]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "action",
+            "message"
+          ]
+        }
+      },
+      "required": [
+        "operation_id",
+        "plan_id",
+        "plan_sha256",
+        "status",
+        "native_request_id",
+        "native_job_id",
+        "native_state",
+        "verification",
+        "error",
+        "recovery"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "outcome_unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "recovery": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "observe_job",
+                      "inspect_scene_do_not_resend"
+                    ]
+                  },
+                  "message": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ImportPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "import_plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "library_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "import_plan_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_library_generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dump_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "insert_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevisionRef"
+          },
+          "minItems": 0,
+          "maxItems": 4096
+        },
+        "duplicate_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevisionRef"
+          },
+          "minItems": 0,
+          "maxItems": 4096
+        },
+        "head_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Head"
+          },
+          "minItems": 0,
+          "maxItems": 1024
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Warning"
+          },
+          "minItems": 0,
+          "maxItems": 64
+        }
+      },
+      "required": [
+        "import_plan_id",
+        "library_id",
+        "import_plan_sha256",
+        "base_library_generation",
+        "expires_at",
+        "dump_sha256",
+        "insert_refs",
+        "duplicate_refs",
+        "head_changes",
+        "warnings"
+      ]
+    },
+    "Request": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipes"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "describe"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "tool": {
+                      "enum": [
+                        "orca_recipes",
+                        "orca_recipe_library",
+                        "orca_recipe_apply"
+                      ]
+                    },
+                    "action": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": []
+                }
+              },
+              "required": [
+                "action",
+                "parameters"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipes"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "list"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "query": {
+                      "type": "string",
+                      "minLength": 0,
+                      "maxLength": 256
+                    },
+                    "include_archived": {
+                      "type": "boolean"
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100
+                    }
+                  },
+                  "required": []
+                }
+              },
+              "required": [
+                "action",
+                "parameters"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipes"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "get"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ref": {
+                      "$ref": "#/$defs/RevisionRef"
+                    }
+                  },
+                  "required": [
+                    "ref"
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "parameters"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipes"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "check"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "recipes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/RevisionRef"
+                      },
+                      "minItems": 1,
+                      "maxItems": 16
+                    },
+                    "binding": {
+                      "$ref": "#/$defs/Binding"
+                    }
+                  },
+                  "required": [
+                    "recipes",
+                    "binding"
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "parameters"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipes"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "export"
+                },
+                "parameters": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "selection": {
+                          "const": "all"
+                        },
+                        "include_archived": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "selection"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "selection": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/$defs/RevisionRef"
+                          },
+                          "minItems": 1,
+                          "maxItems": 1024
+                        }
+                      },
+                      "required": [
+                        "selection"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "parameters"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipes"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "operation.get"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "operation_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "wait_seconds": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 30
+                    }
+                  },
+                  "required": [
+                    "operation_id"
+                  ]
+                }
+              },
+              "required": [
+                "action",
+                "parameters"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_library"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "create"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "draft": {
+                      "$ref": "#/$defs/RecipeDraft"
+                    },
+                    "capture_binding": {
+                      "$ref": "#/$defs/Binding"
+                    }
+                  },
+                  "required": [
+                    "draft",
+                    "capture_binding"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_library"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "revise"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "recipe_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "expected_head_version": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "draft": {
+                      "$ref": "#/$defs/RecipeDraft"
+                    },
+                    "capture_binding": {
+                      "$ref": "#/$defs/Binding"
+                    }
+                  },
+                  "required": [
+                    "recipe_id",
+                    "expected_head_version",
+                    "draft",
+                    "capture_binding"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_library"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "fork"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "source": {
+                      "$ref": "#/$defs/RevisionRef"
+                    },
+                    "draft": {
+                      "$ref": "#/$defs/RecipeDraft"
+                    },
+                    "capture_binding": {
+                      "$ref": "#/$defs/Binding"
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "draft",
+                    "capture_binding"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_library"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "archive"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "recipe_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "expected_head_version": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "recipe_id",
+                    "expected_head_version",
+                    "archived"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_library"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "import.prepare"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "dump": {
+                      "type": "string",
+                      "maxLength": 8388608,
+                      "minLength": 1
+                    },
+                    "advance_heads": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/RevisionRef"
+                      },
+                      "minItems": 0,
+                      "maxItems": 1024
+                    }
+                  },
+                  "required": [
+                    "dump"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_library"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "import.commit"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "import_plan_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "import_plan_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "accepted_warning_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64,
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": [
+                    "import_plan_id",
+                    "import_plan_sha256",
+                    "accepted_warning_ids"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_apply"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "plan"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "recipes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/RevisionRef"
+                      },
+                      "minItems": 1,
+                      "maxItems": 16
+                    },
+                    "binding": {
+                      "$ref": "#/$defs/Binding"
+                    },
+                    "resolutions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/Resolution"
+                      },
+                      "minItems": 0,
+                      "maxItems": 256
+                    }
+                  },
+                  "required": [
+                    "recipes",
+                    "binding"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "const": "orca_recipe_apply"
+            },
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "const": "apply"
+                },
+                "parameters": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "plan_id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    },
+                    "plan_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "accepted_warning_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64,
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": [
+                    "plan_id",
+                    "plan_sha256",
+                    "accepted_warning_ids"
+                  ]
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "required": [
+                "action",
+                "parameters",
+                "request_id"
+              ]
+            }
+          },
+          "required": [
+            "tool",
+            "arguments"
+          ]
+        }
+      ]
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "invalid_params",
+            "unsupported_format",
+            "invalid_dump",
+            "digest_mismatch",
+            "identity_conflict",
+            "library_conflict",
+            "request_conflict",
+            "library_busy",
+            "migration_required",
+            "migration_unavailable",
+            "native_contract_changed",
+            "incompatible_recipe",
+            "compatibility_unknown",
+            "composition_conflict",
+            "stale_target",
+            "conflict",
+            "stale_plan",
+            "plan_expired",
+            "native_limit",
+            "native_validation_failed",
+            "outcome_unknown",
+            "not_found",
+            "head_not_latest",
+            "native_unavailable",
+            "native_busy"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "details": {
+          "type": "object",
+          "maxProperties": 32
+        }
+      },
+      "required": [
+        "kind",
+        "message",
+        "details"
+      ]
+    },
+    "Response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": {
+              "const": 1
+            },
+            "ok": {
+              "const": true
+            },
+            "data": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "contract_version",
+            "ok",
+            "data"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": {
+              "const": 1
+            },
+            "ok": {
+              "const": false
+            },
+            "error": {
+              "$ref": "#/$defs/Error"
+            }
+          },
+          "required": [
+            "contract_version",
+            "ok",
+            "error"
+          ]
+        }
+      ]
+    }
+  }
+}

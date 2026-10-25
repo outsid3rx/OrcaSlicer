@@ -1,0 +1,39 @@
+{
+  "payload": {
+    "format": "orca.recipe",
+    "format_version": 1,
+    "recipe_id": "20000000-0000-4000-8000-000000000001",
+    "revision": 1,
+    "created_at": "2026-10-25T00:00:00Z",
+    "parent": null,
+    "derived_from": null,
+    "name": "Поддержки на столе · пример",
+    "description": "Только пример формата: сигнатуры демонстрационные, физическая проверка не проводилась. Не применять без захвата реального контракта Orca.",
+    "tags": [
+      "contract-example"
+    ],
+    "scope": "object",
+    "values": {
+      "enable_support": "1",
+      "support_on_build_plate_only": "1"
+    },
+    "compatibility": {},
+    "evidence": [],
+    "native_contract": {
+      "protocol_version": 1,
+      "api_revision": 3,
+      "app_version": "fixture-not-a-live-build",
+      "definitions": {
+        "enable_support": {
+          "native_type": 4,
+          "sha256": "d44aeaa26b425674890e03099f48996877fdb1bf3e5bfb910f3960f73de5ad68"
+        },
+        "support_on_build_plate_only": {
+          "native_type": 4,
+          "sha256": "07e5d82e78ae1adc752ec02180a8ade9e384252530ea5e365cf8479a7d8c2a19"
+        }
+      }
+    }
+  },
+  "sha256": "6c0bb016451549007f2465aa645abd7c2be4e2a5aa3a48fc15f7917dfec7f7a5"
+}

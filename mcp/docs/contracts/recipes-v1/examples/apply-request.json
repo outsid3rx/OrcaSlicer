@@ -1,0 +1,14 @@
+{
+  "tool": "orca_recipe_apply",
+  "arguments": {
+    "action": "apply",
+    "parameters": {
+      "plan_id": "50000000-0000-4000-8000-000000000002",
+      "plan_sha256": "8d8a9aadfec51cb606cd605e90150a0e9bd9574fec98f5c89faa49226bc1bd8d",
+      "accepted_warning_ids": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ]
+    },
+    "request_id": "50000000-0000-4000-8000-000000000005"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "orca-slicer": {
+      "command": "/absolute/path/from-installer/orca-slicer-mcp",
+      "args": []
+    }
+  }
+}

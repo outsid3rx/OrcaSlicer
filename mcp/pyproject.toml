@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "orca-slicer-mcp"
+version = "0.4.0"
+description = "Local MCP adapter for explicitly enabled OrcaSlicer windows"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "AGPL-3.0-only"
+dependencies = ["mcp>=1.26,<2", "httpx>=0.28,<0.29", "pydantic>=2.11,<3", "jsonschema>=4.26,<5", "rfc8785>=0.1.4,<1", "pywin32>=311; sys_platform == 'win32'"]
+
+[project.urls]
+Repository = "https://github.com/outsid3rx/OrcaSlicer"
+Documentation = "https://github.com/outsid3rx/OrcaSlicer/tree/main/docs/agent"
+Issues = "https://github.com/outsid3rx/OrcaSlicer/issues"
+
+[project.scripts]
+orca-slicer-mcp = "orca_slicer_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/orca_slicer_mcp"]
