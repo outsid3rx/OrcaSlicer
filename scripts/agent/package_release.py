@@ -86,6 +86,8 @@ def assemble(output, dmg, native_report, require_clean=False):
     with tempfile.TemporaryDirectory(prefix='orca-agent-release-') as tmp:
         stage = Path(tmp)
         subprocess.run(['uv', 'build', '--directory', str(ROOT / 'mcp'), '--out-dir', str(stage)], check=True)
+        # uv's output-directory ignore marker is not a distributable artifact.
+        (stage / '.gitignore').unlink(missing_ok=True)
         image = stage / f'OrcaSlicer-agent-{version}-{report["platform"]}.dmg'
         shutil.copy2(dmg, image)
         shutil.copy2(native_report, stage / 'native-verification.json')
