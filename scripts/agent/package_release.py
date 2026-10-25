@@ -116,7 +116,7 @@ def assemble(output, dmg, native_report, require_clean=False):
             'Enable native control explicitly with ORCA_AGENT_CONTROL=1 in the Orca process.\n'
             'MCP works with any stdio client; omit --client to print generic configuration.\n'
             'Updates/removal preserve recipe databases and print journals.\n\n'
-            f'Full instructions: https://github.com/outsid3rx/OrcaSlicer/blob/v{version}/docs/agent/INSTALL.md\n'
+            f'Full instructions: https://github.com/outsid3rx/OrcaSlicer-Agent-control/blob/v{version}/docs/agent/INSTALL.md\n'
             'Upstream: https://github.com/OrcaSlicer/OrcaSlicer\n')
         wheels = list(stage.glob('*.whl'))
         if len(wheels) != 1:

@@ -2,7 +2,7 @@
 
 [English](INSTALL.md) | [Русский](INSTALL.ru.md)
 
-The bundle contains a separate OrcaSlicer build with AgentControl, an MCP server, and a skill. The native build is required to work with an open project; official OrcaSlicer does not provide the API this MCP uses. The current installer supports macOS only, and the verified bundle platform is macOS arm64. This documentation does not confirm a published release, Developer ID signing, or notarization: check the specific file in the [fork's Releases](https://github.com/outsid3rx/OrcaSlicer/releases).
+The bundle contains a separate OrcaSlicer build with AgentControl, an MCP server, and a skill. The native build is required to work with an open project; official OrcaSlicer does not provide the API this MCP uses. The current installer supports macOS only, and the verified bundle platform is macOS arm64. This documentation does not confirm a published release, Developer ID signing, or notarization: check the specific file in the [fork's Releases](https://github.com/outsid3rx/OrcaSlicer-Agent-control/releases).
 
 ## OrcaSlicer
 

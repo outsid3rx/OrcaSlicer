@@ -2,7 +2,7 @@
 
 [English](DISTRIBUTION.md) | [Русский](DISTRIBUTION.ru.md)
 
-Слайсер, MCP и навык хранятся в одном форке [outsid3rx/OrcaSlicer](https://github.com/outsid3rx/OrcaSlicer). Репозиторий не использует отдельный checkout/submodule для MCP и не требует backend для библиотеки рецептов.
+Слайсер, MCP и навык хранятся в одном форке [outsid3rx/OrcaSlicer-Agent-control](https://github.com/outsid3rx/OrcaSlicer-Agent-control). Репозиторий не использует отдельный checkout/submodule для MCP и не требует backend для библиотеки рецептов.
 
 | Каталог | Ответственность |
 |---|---|

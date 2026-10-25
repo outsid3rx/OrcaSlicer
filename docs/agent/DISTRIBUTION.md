@@ -2,7 +2,7 @@
 
 [English](DISTRIBUTION.md) | [Русский](DISTRIBUTION.ru.md)
 
-The slicer, MCP, and skill live in one fork, [outsid3rx/OrcaSlicer](https://github.com/outsid3rx/OrcaSlicer). The repository does not use a separate MCP checkout/submodule and requires no recipe-library backend.
+The slicer, MCP, and skill live in one fork, [outsid3rx/OrcaSlicer-Agent-control](https://github.com/outsid3rx/OrcaSlicer-Agent-control). The repository does not use a separate MCP checkout/submodule and requires no recipe-library backend.
 
 | Directory | Responsibility |
 |---|---|

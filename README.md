@@ -2,7 +2,7 @@
 
 [English](README.md) | [Русский](README.ru.md)
 
-This is an **unofficial fork of [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer)** for autonomous agent work with the slicer: from loading a model and configuring supports to slicing, checking the result, and submitting a job to the selected printer. The fork lives at [outsid3rx/OrcaSlicer](https://github.com/outsid3rx/OrcaSlicer). It is not an official OrcaSlicer release and is not maintained by the upstream team.
+This is an **unofficial fork of [OrcaSlicer](https://github.com/OrcaSlicer/OrcaSlicer)** for autonomous agent work with the slicer: from loading a model and configuring supports to slicing, checking the result, and submitting a job to the selected printer. The fork lives at [outsid3rx/OrcaSlicer-Agent-control](https://github.com/outsid3rx/OrcaSlicer-Agent-control). It is not an official OrcaSlicer release and is not maintained by the upstream team.
 
 One repository contains the modified slicer, a universal MCP server, and an agent skill. No self-hosted server, recipe-library account, or separate settings application is required.
 
@@ -60,7 +60,7 @@ Without `--client`, installation sets up only the MCP server and prints its stdi
 
 The installer uses a stable absolute path to the installed command. Clients do not need the checkout or its `.venv` afterward. Without `--client`, it emits a universal stdio configuration. [Full installation, Orca launch, updates, and removal](docs/agent/INSTALL.md) · [Bundle contents and releases](docs/agent/DISTRIBUTION.md).
 
-[Releases](https://github.com/outsid3rx/OrcaSlicer/releases) belongs to this fork only. Check file availability, signing, and notarization in the specific release; this README does not announce a published release.
+[Releases](https://github.com/outsid3rx/OrcaSlicer-Agent-control/releases) belongs to this fork only. Check file availability, signing, and notarization in the specific release; this README does not announce a published release.
 
 ## Updates and data
 
@@ -80,7 +80,7 @@ python3 -m http.server 8080 --directory website/dist --bind 127.0.0.1
 
 For GitHub Pages, select **GitHub Actions** as the source in Settings → Pages. The **Agent website** workflow publishes `website/dist/` automatically after website changes reach `main`; manual runs are also available. The rest of the repository is not uploaded to Pages.
 
-GitHub Pages mirror: https://outsid3rx.github.io/OrcaSlicer/. The primary SEO domain remains https://orca-agent.ru; Pages does not change its DNS.
+Primary website: https://outsid3rx.github.io/OrcaSlicer-Agent-control/.
 
 ## Development and verification
 

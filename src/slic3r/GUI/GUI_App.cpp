@@ -6531,7 +6531,7 @@ void GUI_App::check_new_version_sf(bool show_tips, int by_user)
     // Upstream releases lack this fork's API. Keep updates explicit so an
     // official build cannot silently replace the agent-enabled application.
     if (by_user != 0)
-        wxLaunchDefaultBrowser("https://github.com/outsid3rx/OrcaSlicer/releases");
+        wxLaunchDefaultBrowser("https://github.com/outsid3rx/OrcaSlicer-Agent-control/releases");
     return;
 #endif
     AppConfig* app_config = wxGetApp().app_config;
