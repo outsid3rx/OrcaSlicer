@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 import zipfile
 
@@ -46,6 +47,67 @@ class ReleaseTests(unittest.TestCase):
             (folder / 'reference.md').symlink_to(secret)
             with self.assertRaises(ValueError):
                 release.zip_tree(folder, Path(tmp) / 'skill.zip', 'orca-mcp-control')
+
+
+class ForkVersionTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.git('init', '-q')
+        self.git('config', 'user.name', 'Release fixture')
+        self.git('config', 'user.email', 'fixture@example.invalid')
+        (self.root / 'version.inc').write_text('set(SoftFever_VERSION "2.5.0-dev")\n')
+        (self.root / 'mcp').mkdir()
+        (self.root / 'mcp/pyproject.toml').write_text('[project]\nversion = "0.4.0"\n')
+        self.git('add', '.')
+        self.git('commit', '-qm', 'Upstream fixture')
+        self.upstream = self.git('rev-parse', 'HEAD').strip()
+        self.config()
+
+    def git(self, *args):
+        return subprocess.check_output(['git', '-C', str(self.root), *args], text=True)
+
+    def config(self, revision='1', upstream=None):
+        (self.root / 'agent-release.toml').write_text(
+            f'fork_revision = {revision}\nupstream_commit = "{upstream or self.upstream}"\n')
+
+    def test_fork_release_preserves_upstream_and_independent_mcp_versions(self):
+        metadata = release.release_metadata(self.root)
+        self.assertEqual(metadata['fork_version'], '2.5.0-dev-agent.1')
+        self.assertEqual(metadata['release_tag'], 'v2.5.0-dev-agent.1')
+        self.assertEqual(metadata['mcp_version'], '0.4.0')
+        self.assertEqual(metadata['upstream_commit'], self.upstream)
+        self.config('2')
+        self.assertEqual(release.release_metadata(self.root)['fork_version'], '2.5.0-dev-agent.2')
+        (self.root / 'version.inc').write_text('set(SoftFever_VERSION "2.5.1")\n')
+        self.git('add', 'version.inc'); self.git('commit', '-qm', 'Next upstream')
+        self.config(upstream=self.git('rev-parse', 'HEAD').strip())
+        self.assertEqual(release.release_metadata(self.root)['fork_version'], '2.5.1-agent.1')
+
+    def test_invalid_fork_revision_and_abbreviated_pin_are_rejected(self):
+        for revision in ('0', '-1', 'true', '"1"'):
+            with self.subTest(revision=revision):
+                self.config(revision)
+                with self.assertRaises(ValueError):
+                    release.release_metadata(self.root)
+        self.config(upstream=self.upstream[:9])
+        with self.assertRaises(ValueError):
+            release.release_metadata(self.root)
+
+    def test_upstream_version_change_requires_reviewed_pin(self):
+        (self.root / 'version.inc').write_text('set(SoftFever_VERSION "2.5.1")\n')
+        with self.assertRaisesRegex(ValueError, 'Pinned upstream version differs'):
+            release.release_metadata(self.root)
+
+    def test_pin_outside_release_ancestry_is_rejected(self):
+        self.git('checkout', '--orphan', 'unrelated')
+        self.git('commit', '-qm', 'Unrelated fixture')
+        unrelated = self.git('rev-parse', 'HEAD').strip()
+        self.git('checkout', '--detach', self.upstream)
+        self.config(upstream=unrelated)
+        with self.assertRaises(subprocess.CalledProcessError):
+            release.release_metadata(self.root)
 
 
 if __name__ == '__main__':

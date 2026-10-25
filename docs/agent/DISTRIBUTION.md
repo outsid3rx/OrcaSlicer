@@ -17,13 +17,15 @@ The MCP and skill directories are separate from upstream sources. The native mod
 
 ## Versions and artifacts
 
-The OrcaSlicer application version, wire protocol/API revision, MCP Python package, and recipe format are independent. A bundle tag such as `agent-v0.4.0` pins selected compatible versions rather than making every version number equal. The running Orca reports its supported methods and schemas; a published release number does not replace that check.
+Fork releases follow `<upstream version>-agent.<revision>`, with Git tags prefixed by `v`: for example `v2.5.0-dev-agent.1`, then `v2.5.0-dev-agent.2`. After upgrading to upstream 2.5.1, use `v2.5.1-agent.1`. `agent-release.toml` owns the positive fork revision and full pinned upstream commit; the packager derives the upstream version from the unchanged `version.inc`, verifies the pinned commit is an ancestor and has the same version, and records both identities in the release manifest. The application About/API version remains upstream's version; the fork release identity is carried by the tag, assets and manifest.
+
+MCP, wire protocol/API revision and recipe format retain independent versions. MCP 0.4.0 can accompany fork 2.5.0-dev-agent.1. The running Orca reports supported methods and schemas; a release number does not replace that check.
 
 A release contains a native DMG, MCP wheel/sdist, skill ZIP, and installation archive. `release-manifest.json` links the bundle to its source and versions; `SHA256SUMS` checks file integrity. A checksum does not replace verification of provenance, application signing, or notarization status.
 
 `agent_release.yml` is run manually. Supply the ID of a successful `Build all` run from the same repository at the same commit, and the exact artifact name containing one DMG. The workflow checks provenance, validates the DMG, bundled standard CA, and dependencies, runs tests, and builds archives. By default, the result remains an Actions artifact.
 
-To create a **draft**, run the workflow on an existing `agent-v<MCP version>` tag with `create_draft=true`. The workflow does not perform a separate publication step. Dirty sources are allowed only for a local test bundle, marked `publishable=false`, and rejected by `--require-clean`. A clean bundle includes an archive of the corresponding source.
+To create a **draft**, run the workflow on an existing `v<upstream version>-agent.<revision>` tag with `create_draft=true`. The workflow does not perform a separate publication step. Dirty sources are allowed only for a local test bundle, marked `publishable=false`, and rejected by `--require-clean`. A clean bundle includes an archive of the corresponding source.
 
 Local verification and packaging on macOS, from the checkout root:
 
@@ -58,3 +60,14 @@ The recipe SQLite database, operation receipts, and native print journals live o
 Artifacts exclude `.venv`, auth descriptors/tokens, the SQLite database, user models, personal Bambuddy CA certificates, and local working builds. Public Orca uses the standard upstream certificate bundle. A certificate manually added to `.app` resources does not become part of the public release and may be lost when replacing the application; automatic migration of this trust is not promised.
 
 The AGPL license and corresponding source are available with the bundle. Original attribution to OrcaSlicer and its predecessors is preserved in the [upstream README](UPSTREAM_README.md).
+
+## Updating from upstream
+
+Keep fork code on `main` and merge the selected upstream commit rather than rewriting published history:
+
+```sh
+git fetch upstream
+git merge <reviewed-upstream-commit>
+```
+
+Resolve conflicts and record that exact upstream SHA in `agent-release.toml`. If the upstream version changed, reset `fork_revision` to 1; otherwise increment it for the next fork release, including updates between development commits with the same version. Do not reuse a published tag. Review upstream changes and rerun native/MCP tests and builds before releasing. The packager checks ancestry and matching version strings, but cannot decide whether a chosen upstream commit was sufficiently reviewed. MCP is bumped only when its package changes; native API and recipe compatibility are reviewed separately. No background merge or automatic release is enabled.

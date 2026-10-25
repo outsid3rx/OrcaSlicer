@@ -44,10 +44,36 @@ def zip_tree(path, archive, prefix):
                 output.write(item, str(Path(prefix) / item.relative_to(path)))
 
 
+def release_metadata(root):
+    config = tomllib.loads((root / 'agent-release.toml').read_text())
+    revision = config['fork_revision']
+    if type(revision) is not int or revision < 1:
+        raise ValueError('Fork revision must be a positive integer')
+    upstream_commit = config['upstream_commit']
+    if not isinstance(upstream_commit, str) or not re.fullmatch(r'[0-9a-f]{40}', upstream_commit):
+        raise ValueError('Upstream commit must be a full lowercase Git SHA')
+    def upstream_version(text):
+        match = re.search(r'^set\(SoftFever_VERSION "([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)"\)$', text, re.MULTILINE)
+        if not match:
+            raise ValueError('Cannot read upstream version from version.inc')
+        return match[1]
+    version = upstream_version((root / 'version.inc').read_text())
+    pinned = subprocess.check_output(['git', '-C', str(root), 'show', upstream_commit + ':version.inc'], text=True)
+    if upstream_version(pinned) != version:
+        raise ValueError('Pinned upstream version differs from version.inc; update agent-release.toml after merging upstream')
+    subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor', upstream_commit, 'HEAD'], check=True)
+    mcp_version = tomllib.loads((root / 'mcp/pyproject.toml').read_text())['project']['version']
+    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', mcp_version):
+        raise ValueError('MCP version must be a stable three-component package version')
+    fork_version = f'{version}-agent.{revision}'
+    return {'fork_version': fork_version, 'release_tag': 'v' + fork_version,
+            'upstream_version': version, 'upstream_commit': upstream_commit,
+            'fork_revision': revision, 'mcp_version': mcp_version}
+
+
 def assemble(output, dmg, native_report, require_clean=False):
-    version = tomllib.loads((ROOT / 'mcp/pyproject.toml').read_text())['project']['version']
-    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
-        raise ValueError('Release version must be a stable three-component package version')
+    metadata = release_metadata(ROOT)
+    version = metadata['fork_version']
     commit = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
     dirty = bool(subprocess.check_output(['git', '-C', str(ROOT), 'status', '--porcelain', '--untracked-files=normal'], text=True).strip())
     if require_clean and dirty:
@@ -88,7 +114,7 @@ def assemble(output, dmg, native_report, require_clean=False):
             'Enable native control explicitly with ORCA_AGENT_CONTROL=1 in the Orca process.\n'
             'MCP works with any stdio client; omit --client to print generic configuration.\n'
             'Updates/removal preserve recipe databases and print journals.\n\n'
-            f'Full instructions: https://github.com/outsid3rx/OrcaSlicer/blob/agent-v{version}/docs/agent/INSTALL.md\n'
+            f'Full instructions: https://github.com/outsid3rx/OrcaSlicer/blob/v{version}/docs/agent/INSTALL.md\n'
             'Upstream: https://github.com/OrcaSlicer/OrcaSlicer\n')
         wheels = list(stage.glob('*.whl'))
         if len(wheels) != 1:
@@ -105,7 +131,7 @@ def assemble(output, dmg, native_report, require_clean=False):
                             f'--output={stage / ("OrcaSlicer-agent-source-" + version + ".tar.gz")}', commit], check=True)
         files = [{'name': p.name, 'sha256': sha256(p), 'size': p.stat().st_size}
                  for p in sorted(stage.iterdir()) if p.is_file()]
-        manifest = {'manifest_version': 1, 'release_tag': f'agent-v{version}', 'mcp_version': version,
+        manifest = {'manifest_version': 1, **metadata,
                     'source_commit': commit, 'source_tree_dirty': dirty, 'publishable': not dirty,
                     'native': report, 'compatibility': {'wire_protocol': 1, 'native_api_revision_tested': 3,
                     'recipe_contract': 1, 'required_native_capabilities': ['system.describe', 'scene.describe',

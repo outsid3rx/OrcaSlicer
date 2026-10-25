@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       create_draft:
-        description: 'Create a draft release (dispatch on matching agent-vX.Y.Z tag)'
+        description: 'Create a draft release (dispatch on matching v<upstream>-agent.<revision> tag)'
         default: false
         type: boolean
 
@@ -25,6 +25,8 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
           version: '0.11.14'
@@ -108,10 +110,11 @@ jobs:
               raise SystemExit('Draft creation requires dispatch on the matching existing release tag')
           notes = folder.parent / 'release-notes.md'
           notes.write_text('Unofficial OrcaSlicer fork for autonomous AI agent workflows.\n\n'
-                           'Includes native AgentControl, MCP ' + manifest['mcp_version'] +
+                           'Fork version ' + manifest['fork_version'] + ', upstream ' + manifest['upstream_version'] +
+                           '. Includes native AgentControl, MCP ' + manifest['mcp_version'] +
                            ', workflow skill and user-local installer. See release-manifest.json for versions and verification.\n\n'
                            'Personal CAs and user data are excluded. macOS notarization and physical printing are not established by this pipeline.\n')
           subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--draft', '--title',
-                          'OrcaSlicer Agent ' + manifest['mcp_version'], '--notes-file', str(notes),
+                          'OrcaSlicer Agent ' + manifest['fork_version'], '--notes-file', str(notes),
                           *[str(p) for p in sorted(folder.iterdir()) if p.is_file()]], check=True)
           PY
