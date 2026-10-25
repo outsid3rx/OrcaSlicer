@@ -1,0 +1,10 @@
+interface:
+  display_name: "Orca MCP Control"
+  short_description: "Prepare models and send prints through Orca MCP"
+  default_prompt: "Use $orca-mcp-control to prepare my model in OrcaSlicer, check the selected printer and AMS materials, and follow my approval rules before sending."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "orca-slicer"
+      description: "Local OrcaSlicer agent control server"
+      transport: "stdio"

@@ -1,0 +1,43 @@
+name: Agent MCP
+
+on:
+  push:
+    paths: ['mcp/**', 'skills/**', 'scripts/agent/**', '.github/workflows/agent_*.yml']
+  pull_request:
+    paths: ['mcp/**', 'skills/**', 'scripts/agent/**', '.github/workflows/agent_*.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            python: '3.12'
+          - os: ubuntu-latest
+            python: '3.11'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.14'
+      - run: uv sync --locked --directory mcp --python '${{ matrix.python }}'
+      - name: MCP unit and official stdio tests
+        run: uv run --directory mcp --no-sync python -m unittest discover -s tests -v
+      - name: Installer and distribution tests
+        run: uv run --directory mcp --no-sync python -m unittest discover -s ../scripts/agent/tests -v
+      - name: Portable recipe contract
+        run: uv run --directory mcp --no-sync python docs/contracts/recipes-v1/verify_contract.py
+      - name: Shell syntax
+        run: sh -n scripts/agent/install.sh
+      - name: Build package
+        run: uv build --directory mcp --out-dir '${{ runner.temp }}/agent-packages'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-mcp-${{ matrix.os }}-${{ matrix.python }}
+          path: ${{ runner.temp }}/agent-packages/*

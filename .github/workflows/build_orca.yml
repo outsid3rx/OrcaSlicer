@@ -344,7 +344,8 @@ jobs:
           fi
 
       - name: Create DMG without notary
-        if: github.ref != 'refs/heads/main' && runner.os == 'macOS' && inputs.macos-combine-only
+        # Forks do not have upstream's signing secrets, including on main.
+        if: (github.repository != 'OrcaSlicer/OrcaSlicer' || github.ref != 'refs/heads/main') && runner.os == 'macOS' && inputs.macos-combine-only
         working-directory: ${{ github.workspace }}
         run: |
           # Load the `retry` and `create_dmg` helpers.

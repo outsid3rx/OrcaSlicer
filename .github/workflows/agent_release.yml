@@ -1,0 +1,117 @@
+name: Assemble Agent release
+
+on:
+  workflow_dispatch:
+    inputs:
+      native_run_id:
+        description: 'Successful Build all run for exactly this commit'
+        required: true
+        type: string
+      native_artifact:
+        description: 'Exact artifact name containing one macOS DMG'
+        required: true
+        type: string
+      create_draft:
+        description: 'Create a draft release (dispatch on matching agent-vX.Y.Z tag)'
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  assemble:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.14'
+      - name: Verify native build provenance
+        uses: actions/github-script@v7
+        env:
+          NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+        with:
+          script: |
+            const id = process.env.NATIVE_RUN_ID;
+            if (!/^[1-9][0-9]*$/.test(id)) throw new Error('Invalid native run ID');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: Number(id)});
+            if (run.head_sha !== context.sha || run.conclusion !== 'success' ||
+                !['push', 'workflow_dispatch'].includes(run.event) ||
+                run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}` ||
+                run.path !== '.github/workflows/build_all.yml') {
+              throw new Error('Native artifact must come from a successful Build all run in this repository at the same commit');
+            }
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.native_artifact }}
+          run-id: ${{ inputs.native_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/agent-native-input
+      - run: uv sync --locked --directory mcp --python '3.12'
+      - name: Test MCP and distribution
+        run: |
+          uv run --directory mcp --no-sync python -m unittest discover -s tests
+          uv run --directory mcp --no-sync python -m unittest discover -s ../scripts/agent/tests
+          uv run --directory mcp --no-sync python docs/contracts/recipes-v1/verify_contract.py
+      - name: Inspect native image and assemble artifacts
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          uv run --directory mcp --no-sync python - <<'PY'
+          import os, pathlib, subprocess, sys
+          root = pathlib.Path.cwd().parent
+          temporary = pathlib.Path(os.environ['RUNNER_TEMP'])
+          images = list((temporary / 'agent-native-input').rglob('*.dmg'))
+          if len(images) != 1:
+              raise SystemExit('Expected exactly one DMG in the selected native artifact')
+          report = temporary / 'agent-native-report.json'
+          subprocess.run([sys.executable, str(root / 'scripts/agent/verify_dmg.py'), '--dmg', str(images[0]),
+                          '--output', str(report), '--source-commit', os.environ['SOURCE_COMMIT']], check=True)
+          subprocess.run([sys.executable, str(root / 'scripts/agent/package_release.py'), '--dmg', str(images[0]),
+                          '--native-report', str(report), '--output', str(temporary / 'agent-dist'), '--require-clean'], check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orca-agent-release
+          path: ${{ runner.temp }}/agent-dist/*
+          if-no-files-found: error
+
+  draft:
+    if: inputs.create_draft
+    needs: assemble
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: orca-agent-release
+          path: dist
+      - name: Create draft without publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          folder = pathlib.Path('dist')
+          manifest = json.loads((folder / 'release-manifest.json').read_text())
+          tag = manifest['release_tag']
+          if not manifest['publishable'] or manifest['source_commit'] != os.environ['SOURCE_COMMIT']:
+              raise SystemExit('Release source is not publishable')
+          if os.environ['DISPATCH_REF'] != 'refs/tags/' + tag:
+              raise SystemExit('Draft creation requires dispatch on the matching existing release tag')
+          notes = folder.parent / 'release-notes.md'
+          notes.write_text('Unofficial OrcaSlicer fork for autonomous AI agent workflows.\n\n'
+                           'Includes native AgentControl, MCP ' + manifest['mcp_version'] +
+                           ', workflow skill and user-local installer. See release-manifest.json for versions and verification.\n\n'
+                           'Personal CAs and user data are excluded. macOS notarization and physical printing are not established by this pipeline.\n')
+          subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--draft', '--title',
+                          'OrcaSlicer Agent ' + manifest['mcp_version'], '--notes-file', str(notes),
+                          *[str(p) for p in sorted(folder.iterdir()) if p.is_file()]], check=True)
+          PY
