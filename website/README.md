@@ -30,7 +30,7 @@ without JavaScript. The FAQ and manual instructions use HTML `details`.
 Publish the contents of `website/dist/` on any static host.
 For GitHub Pages, select **GitHub Actions** as the source in Settings → Pages. The **Agent website** workflow publishes `website/dist/` automatically after website changes reach `main`; manual runs are also available. The rest of the repository is not uploaded to Pages.
 
-GitHub Pages mirror: https://outsid3rx.github.io/OrcaSlicer/. The primary SEO domain remains https://orca-agent.ru; Pages does not change its DNS.
+Primary website: https://outsid3rx.github.io/OrcaSlicer-Agent-control/.
 
 Paths are relative, so hosting under a GitHub Pages subdirectory also works.
 `.openai/hosting.json` contains only the Sites deployment identifier and
@@ -62,6 +62,18 @@ grid, white rounded surfaces, yellow/black button pairing, and blue, red, and
 peach accents. Nunito Sans is the suggested Poppins replacement with Cyrillic
 support; Inter is used for body text.
 
+`dist/assets/favicon.svg` is the shared rounded logo used in the header, footer
+and browser tab. `dist/assets/logo.png` is its 512px transparent export for the
+Pillow social-card generator; both localized cards use this same mark. The SVG
+refines the rounded concept generated in Canva, with equal 10-unit layer spacing
+and a 3.6-unit stroke. When changing the SVG, refresh its PNG before the cards
+(Node.js with `sharp` installed is needed only for this export):
+
+```sh
+node -e "require('sharp')('website/dist/assets/favicon.svg', {density: 768}).resize(512, 512).png().toFile('website/dist/assets/logo.png')"
+python3 website/generate_social_images.py
+```
+
 Fonts are distributed under the SIL Open Font License; license texts are in
 `dist/assets/*-OFL.txt`. `model.png` and `slice.png` were obtained through native
 MCP in an OrcaSlicer test project. The conversation and cards on the page are an
@@ -84,19 +96,20 @@ model/slice toggle again.
 
 ## Search metadata and social previews
 
-The primary public origin is `https://orca-agent.ru`. Both language pages have
+The primary public URL is `https://outsid3rx.github.io/OrcaSlicer-Agent-control/`. Both language pages have
 self-canonical URLs, reciprocal absolute hreflang links and an English x-default.
-robots.txt allows crawling and advertises sitemap.xml, which lists the two
-canonical pages and their language alternatives. Hosting access and working
-DNS/TLS must also allow anonymous access; metadata cannot activate pending DNS.
+sitemap.xml lists the two canonical pages and their language alternatives.
+The bundled robots.txt advertises this sitemap, but crawlers read robots.txt at
+the host root; the project subdirectory file does not control the entire
+outsid3rx.github.io host. Hosting must allow anonymous access.
 
 Open Graph and Twitter use localized 1200x630 PNG cards. SoftwareApplication
 JSON-LD describes the open-source macOS project without invented ratings,
 reviews, prices or versions. These tags do not guarantee indexing or rich results.
 
-When changing the primary domain, update both HTML heads, JSON-LD, robots.txt,
-sitemap.xml and ORIGIN in check_site.py. UI asset paths remain relative; SEO
-URLs deliberately name the primary domain. Social cards can be regenerated
+When changing the primary site URL, update both HTML heads, JSON-LD, robots.txt,
+sitemap.xml and SITE_URL in check_site.py. UI asset paths remain relative; SEO
+URLs deliberately name the primary site URL. Social cards can be regenerated
 with `python3 website/generate_social_images.py` from the fork root. Pillow is
 required only for that optional maintenance operation; serving the site still
 requires no build or Python dependencies. Font licenses remain with the assets.

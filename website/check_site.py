@@ -10,8 +10,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent / 'dist'
 PAGES = {'en': ROOT / 'index.html', 'ru': ROOT / 'ru/index.html'}
-ORIGIN = 'https://orca-agent.ru'
-URLS = {'en': ORIGIN + '/', 'ru': ORIGIN + '/ru/'}
+SITE_URL = 'https://outsid3rx.github.io/OrcaSlicer-Agent-control'
+URLS = {'en': SITE_URL + '/', 'ru': SITE_URL + '/ru/'}
 ALTERNATES = {**URLS, 'x-default': URLS['en']}
 
 
@@ -82,9 +82,13 @@ class Page(HTMLParser):
 def local_target(page, url):
     parsed = urlparse(url)
     if parsed.scheme or parsed.netloc:
-        if parsed.scheme != 'https' or parsed.netloc != urlparse(ORIGIN).netloc:
+        site = urlparse(SITE_URL)
+        if parsed.scheme != site.scheme or parsed.netloc != site.netloc:
             return None
-        target = (ROOT / parsed.path.lstrip('/')).resolve()
+        prefix = site.path + '/'
+        if not parsed.path.startswith(prefix):
+            return None
+        target = (ROOT / parsed.path[len(prefix):]).resolve()
     elif parsed.path.startswith('/'):
         target = (ROOT / parsed.path.lstrip('/')).resolve()
     elif parsed.path:
@@ -116,15 +120,17 @@ def check_seo(language, page, errors):
     robots = {part.strip().lower() for part in meta('robots').split(',')}
     if robots != {'index', 'follow', 'max-image-preview:large'}:
         fail('robots must allow index, follow and max-image-preview:large')
-    expected_image = ORIGIN + f'/assets/og-{language}.png'
+    expected_image = SITE_URL + f'/assets/og-{language}.png'
     expected = {'og:type': 'website', 'og:site_name': 'OrcaSlicer Agent',
                 'og:url': URLS[language], 'og:image': expected_image,
+                'og:image:secure_url': expected_image, 'og:image:type': 'image/png',
+                'og:image:width': '1200', 'og:image:height': '630',
                 'og:locale': 'en_US' if language == 'en' else 'ru_RU',
                 'og:locale:alternate': 'ru_RU' if language == 'en' else 'en_US',
                 'twitter:card': 'summary_large_image', 'twitter:image': expected_image}
     values = {name: meta(name) for name in (
         'og:title', 'og:description', 'twitter:title', 'twitter:description',
-        'twitter:image:alt', *expected)}
+        'og:image:alt', 'twitter:image:alt', *expected)}
     for name, value in expected.items():
         if values[name] != value:
             fail(f'{name} must be {value}')
@@ -164,7 +170,7 @@ def check_crawl_files(errors):
     else:
         directives = [line.split('#', 1)[0].strip() for line in robots.read_text().splitlines()]
         directives = [line for line in directives if line]
-        if directives != ['User-agent: *', 'Allow: /', 'Sitemap: ' + ORIGIN + '/sitemap.xml']:
+        if directives != ['User-agent: *', 'Allow: /', 'Sitemap: ' + SITE_URL + '/sitemap.xml']:
             errors.append('robots.txt must allow all crawlers and advertise the canonical sitemap')
     sitemap = ROOT / 'sitemap.xml'
     if not sitemap.is_file():
@@ -240,7 +246,8 @@ def main():
         if parsed['en'].copy_text.get('install-command', '').strip() != expected:
             errors.append('Default manual install must use generic stdio configuration')
     for name in ('inter-regular.ttf', 'inter-semibold.ttf', 'nunito-extra-bold.ttf',
-                 'inter-OFL.txt', 'nunito-OFL.txt', 'model.png', 'slice.png'):
+                 'inter-OFL.txt', 'nunito-OFL.txt', 'model.png', 'slice.png',
+                 'favicon.svg', 'logo.png'):
         if not (ROOT / 'assets' / name).is_file():
             errors.append('Missing bundled font, license or preview: ' + name)
     check_crawl_files(errors)

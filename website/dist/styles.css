@@ -169,12 +169,10 @@ code {
   display: grid;
   place-items: center;
 }
-.brand-mark svg {
-  width: 25px;
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.8;
-  stroke-linejoin: round;
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .brand-mark.small {
   width: 31px;
@@ -1495,9 +1493,6 @@ footer > div {
     height: 30px;
     width: 30px;
     border-radius: 10px;
-  }
-  .brand-mark svg {
-    width: 23px;
   }
   .hero {
     padding: 54px 2px 32px;

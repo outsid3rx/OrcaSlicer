@@ -10,6 +10,13 @@ def font(name, size):
     return ImageFont.truetype(str(ASSETS / name), size)
 
 
+def draw_logo(image, x, y, size):
+    """Use the shared PNG export of favicon.svg for both social cards."""
+    logo = Image.open(ASSETS / 'logo.png').convert('RGBA')
+    logo = logo.resize((size, size), Image.Resampling.LANCZOS)
+    image.paste(logo, (x, y), logo)
+
+
 def draw_card(language, lines, subtitle, label):
     image = Image.new('RGB', (1200, 630), '#f2f2f2')
     draw = ImageDraw.Draw(image)
@@ -17,9 +24,7 @@ def draw_card(language, lines, subtitle, label):
         for y in range(14, 630, 20):
             draw.ellipse((x, y, x + 1, y + 1), fill='#d7d7d7')
     draw.rounded_rectangle((35, 35, 1165, 595), radius=38, fill=WHITE)
-    draw.rounded_rectangle((68, 68, 124, 124), radius=17, fill=YELLOW)
-    for y in (83, 94, 105):
-        draw.line([(80, y), (96, y + 8), (112, y)], fill=INK, width=2)
+    draw_logo(image, 68, 68, 56)
     draw.text((139, 70), 'orca / agent', font=font('inter-semibold.ttf', 35), fill=INK)
     small = font('inter-semibold.ttf', 16)
     label_width = draw.textbbox((0, 0), label, font=small)[2]
@@ -32,12 +37,13 @@ def draw_card(language, lines, subtitle, label):
     draw.text((70, 180), lines[0], font=headline, fill=INK)
     draw.text((70, 270), lines[1], font=headline, fill=INK)
     draw.text((73, 403), subtitle, font=font('inter-regular.ttf', 26), fill=INK)
-    draw.rounded_rectangle((73, 495, 290, 547), radius=27, fill=YELLOW)
-    draw.text((98, 506), 'orca-agent.ru', font=font('inter-semibold.ttf', 22), fill=INK)
-    draw.text((325, 512), 'macOS Apple Silicon', font=font('inter-regular.ttf', 18), fill=INK)
-    draw.rounded_rectangle((963, 219, 1127, 393), radius=35, fill=YELLOW)
-    for y in (255, 282, 309):
-        draw.line([(985, y), (1045, y + 32), (1105, y)], fill=INK, width=4)
+    address = 'outsid3rx.github.io/OrcaSlicer-Agent-control/'
+    address_font = font('inter-semibold.ttf', 22)
+    address_width = draw.textbbox((0, 0), address, font=address_font)[2]
+    draw.rounded_rectangle((73, 495, 123 + address_width, 547), radius=27, fill=YELLOW)
+    draw.text((98, 506), address, font=address_font, fill=INK)
+    draw.text((158 + address_width, 512), 'macOS Apple Silicon', font=font('inter-regular.ttf', 18), fill=INK)
+    draw_logo(image, 963, 219, 164)
     draw.text((988, 421), 'MCP', font=font('inter-semibold.ttf', 32), fill=INK)
     image.save(ASSETS / f'og-{language}.png', optimize=True)
 
