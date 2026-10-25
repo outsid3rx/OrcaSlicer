@@ -232,7 +232,7 @@ code {
 .black:hover {
   background: #242424;
 }
-.nav-github {
+.nav .nav-github {
   border: 1px solid var(--ink);
   padding: 10px 20px;
   min-height: 43px;
@@ -1476,7 +1476,7 @@ footer > div {
   .nav nav a:first-child {
     display: none;
   }
-  .nav-github {
+  .nav .nav-github {
     padding: 9px 14px;
     font-size: 11px;
     min-height: 37px;
@@ -1960,7 +1960,7 @@ footer > div {
   .nav {
     padding: 12px 14px;
   }
-  .nav-github {
+  .nav .nav-github {
     padding: 8px 12px;
     min-height: 35px;
   }
