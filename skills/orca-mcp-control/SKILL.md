@@ -36,6 +36,16 @@ Unused materials in the project do not by themselves require deletion. Slicing d
 
 Slice the explicitly identified plate(s), wait for completion, and inspect the native result. For the required print report, render an actual completed toolpath/slice preview: use `orca_preview` with `preview.render` and `scope: slice` when the running schema advertises it. A `plate`/`scene` model thumbnail shows placement, not the slicing result; never label it a screenshot of the slice. Estimates and previews do not prove physical fit or successful printing.
 
+## Improve settings from print evidence
+
+For a print-quality problem or calibration request in a connected window, read
+[references/calibration.md](references/calibration.md). Start with the current
+device, effective settings and existing physical results; ask only for missing
+information. Preserve a restorable baseline, choose the smallest useful experiment,
+and compare physical results before accepting a setting as calibrated. Record the
+conditions and evidence so applicable results can be reused. Calibration prints
+use the same preparation, reporting and submission rules below.
+
 ## Prepare, obtain approval, then send
 
 Use `orca_printing` with `printing.prepare` to freeze the current completed slice for the explicit device, plate, action, endpoint mode and material mapping. Preparation does not send the file. Review the returned plan, compatibility checks and warning IDs before submission.
