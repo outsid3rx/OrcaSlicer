@@ -25,6 +25,14 @@
 #include <deque>
 #include <regex>
 #include <initializer_list>
+#include <cerrno>
+#include <mutex>
+#ifndef _WIN32
+#include <fcntl.h>
+#include <unistd.h>
+#elif !defined(_MSC_VER)
+#include <Windows.h>
+#endif
 
 #include "Config.hpp"
 #include "Exception.hpp"
@@ -96,6 +104,52 @@ using boost::property_tree::ptree;
 namespace Slic3r {
 
 namespace {
+
+// Atomic create-only publication is stronger than the best-effort shared
+// preset-directory lock: a concurrent instance can never make this writer
+// replace its destination. No in-place/rename-with-replace fallback is allowed.
+std::error_code write_new_preset_file(const std::string& destination, const std::string& bytes)
+{
+    const auto temporary = fs::path(destination + fs::unique_path(".%%%%-%%%%-%%%%.tmp").string());
+#ifdef _WIN32
+    const auto wide = boost::nowide::widen(temporary.string());
+    HANDLE handle = CreateFileW(wide.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (handle == INVALID_HANDLE_VALUE) return {int(GetLastError()), std::system_category()};
+    std::error_code error;
+    std::size_t offset = 0;
+    while (offset < bytes.size()) {
+        const DWORD size = DWORD(std::min<std::size_t>(bytes.size() - offset, 1024 * 1024));
+        DWORD written = 0;
+        if (!WriteFile(handle, bytes.data() + offset, size, &written, nullptr) || written == 0) {
+            const DWORD code = written == 0 ? ERROR_WRITE_FAULT : GetLastError();
+            error = {int(code), std::system_category()}; break;
+        }
+        offset += written;
+    }
+    if (!error && !FlushFileBuffers(handle)) error = {int(GetLastError()), std::system_category()};
+    CloseHandle(handle);
+    if (!error && !MoveFileExW(wide.c_str(), boost::nowide::widen(destination).c_str(), MOVEFILE_WRITE_THROUGH))
+        error = {int(GetLastError()), std::system_category()};
+    if (error) DeleteFileW(wide.c_str());
+    return error;
+#else
+    const int descriptor = ::open(temporary.string().c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+    if (descriptor < 0) return {errno, std::generic_category()};
+    std::error_code error;
+    std::size_t offset = 0;
+    while (offset < bytes.size()) {
+        const auto written = ::write(descriptor, bytes.data() + offset, bytes.size() - offset);
+        if (written < 0 && errno == EINTR) continue;
+        if (written <= 0) { error = {written < 0 ? errno : EIO, std::generic_category()}; break; }
+        offset += std::size_t(written);
+    }
+    if (!error && ::fsync(descriptor) != 0) error = {errno, std::generic_category()};
+    if (::close(descriptor) != 0 && !error) error = {errno, std::generic_category()};
+    if (!error && ::link(temporary.string().c_str(), destination.c_str()) != 0) error = {errno, std::generic_category()};
+    ::unlink(temporary.string().c_str());
+    return error;
+#endif
+}
 
 struct ParsedName {
     PresetOrigin::Kind kind { PresetOrigin::Kind::User };
@@ -700,7 +754,7 @@ void Preset::load_info(const std::string& file)
     }
 }
 
-void Preset::save_info(std::string file)
+void Preset::save_info(std::string file, bool create_only)
 {
     //BBS: add project embedded preset logic
     if (this->is_project_embedded || this->is_from_bundle())
@@ -723,7 +777,7 @@ void Preset::save_info(std::string file)
     c << "updated_time" << " = " << std::to_string(this->updated_time) << std::endl;
 
     InstanceLock instance_lock(user_presets_lock_path());
-    if (const std::error_code ec = write_file_atomically(file, c.str()))
+    if (const std::error_code ec = create_only ? write_new_preset_file(file, c.str()) : write_file_atomically(file, c.str()))
         BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ": failed to save " << file << ": " << ec.message();
 }
 
@@ -751,7 +805,7 @@ void Preset::remove_files(bool cloud_already_deleted)
 }
 
 //BBS: add logic for only difference save
-bool Preset::save(DynamicPrintConfig* parent_config)
+bool Preset::save(DynamicPrintConfig* parent_config, bool create_only)
 {
     //BBS: add project embedded preset logic
     if (this->is_project_embedded)
@@ -827,7 +881,7 @@ bool Preset::save(DynamicPrintConfig* parent_config)
 
     InstanceLock instance_lock(user_presets_lock_path());
     boost::filesystem::create_directories(fs::path(this->file).parent_path());
-    if (const std::error_code ec = write_file_atomically(this->file, json.str())) {
+    if (const std::error_code ec = create_only ? write_new_preset_file(this->file, json.str()) : write_file_atomically(this->file, json.str())) {
         // No .info either: one without its preset reads as a cloud deletion request.
         BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ": failed to save " << this->file << ": " << ec.message();
         return false;
@@ -835,7 +889,7 @@ bool Preset::save(DynamicPrintConfig* parent_config)
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " save config for: " << this->name << " and filament_id: " << filament_id << " and base_id: " << this->base_id;
 
     // Bundle presets are synced via bundle_id and don't need individual .info files.
-    if (! this->is_from_bundle()) {
+    if (! this->is_from_bundle() && !create_only) {
         fs::path idx_file(this->file);
         idx_file.replace_extension(".info");
         this->save_info(idx_file.string());
@@ -3344,9 +3398,55 @@ std::map<std::string, std::vector<Preset const *>> PresetCollection::get_filamen
 }
 
 //BBS: add project embedded preset logic
-void PresetCollection::save_current_preset(const std::string &new_name, bool detach, bool save_to_project, Preset* _curr_preset)
+void PresetCollection::save_current_preset(const std::string &new_name, bool detach, bool save_to_project, Preset* _curr_preset, bool create_only)
 {
     Preset curr_preset = _curr_preset ? *_curr_preset : m_edited_preset;
+    if (create_only) {
+        // Prepare and persist before changing the live registry/selection. A
+        // denied create must not leave a phantom saved preset in memory.
+        std::lock_guard<PresetCollection> guard(*this);
+        if (new_name.empty() || new_name.size() > 120 || new_name == "." || new_name == ".." ||
+            std::any_of(new_name.begin(), new_name.end(), [](unsigned char byte) { return byte < 32; }) ||
+            new_name.find_first_of("/\\:*?\"<>|") != std::string::npos || new_name.front() == ' ' || new_name.back() == ' ' || new_name.back() == '.')
+            throw std::runtime_error("Create-only preset save requires a simple nonempty preset name");
+        if (find_preset(new_name, false)) throw std::runtime_error("The preset name already exists");
+        Preset prepared(curr_preset);
+        const std::string old_name = prepared.name;
+        const bool was_base = is_base_preset(prepared);
+        prepared.name = new_name;
+        prepared.vendor = nullptr; prepared.alias.clear(); prepared.renamed_from.clear(); prepared.m_excluded_from.clear();
+        prepared.setting_id.clear(); prepared.bundle_id.clear();
+        prepared.is_default = false; prepared.is_system = false; prepared.is_external = false;
+        prepared.is_project_embedded = save_to_project; prepared.is_visible = true;
+        if (detach) prepared.inherits().clear();
+        else if (was_base) prepared.inherits() = old_name;
+        if (m_type == Preset::TYPE_PRINT) prepared.config.set_key_value("print_settings_id", new ConfigOptionString(new_name));
+        else if (m_type == Preset::TYPE_FILAMENT) prepared.config.set_key_value("filament_settings_id", new ConfigOptionStrings{new_name});
+        else if (m_type == Preset::TYPE_PRINTER) prepared.config.set_key_value("printer_settings_id", new ConfigOptionString(new_name));
+        prepared.file = path_for_preset(prepared);
+        if (!save_to_project) {
+            if (!fs::path(prepared.file).is_absolute()) throw std::runtime_error("The native user preset directory is unavailable");
+            fs::path info(prepared.file); info.replace_extension(".info");
+            if (fs::symlink_status(prepared.file).type() != fs::file_not_found || fs::symlink_status(info).type() != fs::file_not_found)
+                throw std::runtime_error("The preset or its sidecar path already exists");
+            // Case-fold preflight also catches aliases on case-insensitive
+            // filesystems. The final OS primitive still decides atomically.
+            if (fs::exists(fs::path(prepared.file).parent_path())) {
+                const auto name = boost::algorithm::to_lower_copy(fs::path(prepared.file).filename().string());
+                for (const auto& entry : fs::directory_iterator(fs::path(prepared.file).parent_path()))
+                    if (boost::algorithm::to_lower_copy(entry.path().filename().string()) == name)
+                        throw std::runtime_error("A case-equivalent preset path already exists");
+            }
+            Preset* parent = prepared.inherits().empty() ? nullptr : find_preset2(prepared.inherits(), true);
+            if (parent) { Preset::normalize_inherits(prepared.config, parent); if (prepared.base_id.empty()) prepared.base_id = parent->setting_id; }
+            if (!prepared.save(parent ? &parent->config : nullptr, true)) throw std::runtime_error("Cannot create the new preset file without replacing an existing path");
+        }
+        m_presets.insert(find_preset_internal(new_name), std::move(prepared));
+        select_preset_by_name(new_name, true);
+        LifecycleEventContext context; context.name = new_name; context.msg = "new"; context.code = LifecycleEvtCode::Ok;
+        fire_lifecycle_event(LifecycleEvent::PresetSaved, context);
+        return;
+    }
     //BBS: add lock logic for sync preset in background
     std::string final_inherits;
     lock();

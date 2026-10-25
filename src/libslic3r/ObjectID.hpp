@@ -1,6 +1,7 @@
 #ifndef slic3r_ObjectID_hpp_
 #define slic3r_ObjectID_hpp_
 
+#include <atomic>
 #include <cereal/access.hpp>
 #include <cereal/types/base_class.hpp>
 #include <cstddef>
@@ -59,8 +60,8 @@ struct ObjectInstanceID {
 // to synchronize the front end (UI) with the back end (BackgroundSlicingProcess / Print / PrintObject).
 // Also base for Print, PrintObject, SLAPrint, SLAPrintObject to provide a unique ID for matching Model / ModelObject
 // with their corresponding Print / PrintObject objects by the notification center at the UI when processing back-end warnings.
-// Achtung! The s_last_id counter is not thread safe, so it is expected, that the ObjectBase derived instances
-// are only instantiated from the main thread.
+// Atomic allocation also serves detached model copies computed in background jobs.
+// Individual live objects still require their owning thread for mutation.
 class ObjectBase
 {
 public:
@@ -97,8 +98,8 @@ protected:
 private:
     ObjectID                m_id;
 
-	static inline ObjectID  generate_new_id() { return ObjectID(++ s_last_id); }
-    static size_t           s_last_id;
+	static inline ObjectID  generate_new_id() { return ObjectID(s_last_id.fetch_add(1, std::memory_order_relaxed) + 1); }
+    static std::atomic<size_t> s_last_id;
 	
 	friend ObjectID wipe_tower_object_id();
 	friend ObjectID wipe_tower_instance_id();
@@ -132,12 +133,12 @@ public:
     Timestamp	        timestamp() const throw() override { return m_timestamp; }
     bool 				timestamp_matches(const ObjectWithTimestamp &rhs) const throw() { return m_timestamp == rhs.m_timestamp; }
     bool 				object_id_and_timestamp_match(const ObjectWithTimestamp &rhs) const throw() { return this->id() == rhs.id() && m_timestamp == rhs.m_timestamp; }
-    void 				touch() { m_timestamp = ++ s_last_timestamp; }
+    void 				touch() { m_timestamp = s_last_timestamp.fetch_add(1, std::memory_order_relaxed) + 1; }
 
 private:
 	// The first timestamp is non-zero, as zero timestamp means the timestamp is not reliable.
 	Timestamp 			m_timestamp { 1 };
-    static Timestamp    s_last_timestamp;
+    static std::atomic<Timestamp> s_last_timestamp;
 	
 	friend class cereal::access;
 	friend class Slic3r::UndoRedo::StackImpl;

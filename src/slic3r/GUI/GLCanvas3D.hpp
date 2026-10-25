@@ -1163,6 +1163,12 @@ public:
         m_enable_render = enabled;
     }
 
+    // Render completed G-code toolpaths into an isolated offscreen native viewer.
+    // Call only on the GUI thread while the source slicing result is immutable.
+    bool render_slice_thumbnail(ThumbnailData& data, const GCodeProcessorResult& result,
+                                const std::vector<std::string>& colors, unsigned int width, unsigned int height,
+                                Camera::ViewAngleType angle);
+
     // printable_only == false -> render also non printable volumes as grayed
     // parts_only == false -> render also sla support and pad
     void render_thumbnail(ThumbnailData& thumbnail_data, unsigned int w, unsigned int h, const ThumbnailsParams& thumbnail_params,

@@ -1,3 +1,4 @@
+#include <libslic3r/ObjectID.hpp>
 #ifndef slic3r_GLGizmoCut_hpp_
 #define slic3r_GLGizmoCut_hpp_
 
@@ -32,6 +33,15 @@ struct CutConnectorAttributes;
 
 namespace GUI {
 class Selection;
+
+// ID-free connector mesh generation and detached-model preparation shared by the
+// gizmo and explicit client operations. No access to the live gizmo or selection.
+indexed_triangle_set make_cut_connector_mesh(CutConnectorAttributes attributes, double snap_space, double snap_bulge);
+void add_cut_connector_volumes(ModelObject& object, const std::string& name, double snap_space, double snap_bulge);
+int prepare_cut_connectors(ModelObject& object, const Transform3d& rotation, const Vec3d& normal,
+                           const std::string& name, double snap_space, double snap_bulge);
+void update_object_cut_id(CutObjectBase& cut_id, ModelObjectCutAttributes attributes, int dowels_count);
+
 
 enum class SLAGizmoEventType : unsigned char;
 

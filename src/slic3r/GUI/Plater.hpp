@@ -373,7 +373,7 @@ public:
 
     int new_project(bool skip_confirm = false, bool silent = false, const wxString& project_name = wxString(), bool reload_presets = true);
     // BBS: save & backup
-    void load_project(wxString const & filename = "", wxString const & originfile = "-");
+    void load_project(wxString const & filename = "", wxString const & originfile = "-", wxString const& source_filename = "");
     int save_project(bool saveAs = false);
     //BBS download project by project id
     void import_model_id(wxString download_info);
@@ -452,6 +452,8 @@ public:
     std::vector<size_t> load_files(const std::vector<boost::filesystem::path>& input_files, LoadStrategy strategy = LoadStrategy::LoadModel | LoadStrategy::LoadConfig,  bool ask_multi = false, bool* published_out = nullptr);
     // to be called on drag and drop
     bool load_files(const wxArrayString& filenames);
+    // Prepared, detached objects; AgentControl owns validation and the Undo snapshot.
+    std::vector<size_t> agent_import_objects(const ModelObjectPtrs& objects, bool auto_drop = true, bool preserve_placement = false);
 
     const wxString& get_last_loaded_gcode() const { return m_last_loaded_gcode; }
 
@@ -565,7 +567,7 @@ public:
 
     // BBS: segment model with CGAL
     void segment(size_t obj_idx, size_t instance_idx, double smoothing_alpha=0.5, int segment_number=5);
-    void apply_cut_object_to_model(size_t init_obj_idx, const ModelObjectPtrs& cut_objects);
+    void apply_cut_object_to_model(size_t init_obj_idx, const ModelObjectPtrs& cut_objects, bool auto_drop = true, bool preserve_placement = false);
     void merge(size_t obj_idx, std::vector<int> &vol_indeces);
 
     void send_to_printer(bool isall = false);
@@ -576,6 +578,7 @@ public:
     // Write the project to output_path as a copy: the project's file name, dirty state and model stay
     // as they are, and the signed-in account is not added as the designer. False when the write fails.
     bool export_3mf_copy(const boost::filesystem::path& output_path);
+    int agent_export_print_artifact(const boost::filesystem::path& output_path, int plate_index);
     // Export a "published" 3MF embedding the author-selected settings in the file metadata; a
     // pure export that leaves the in-memory project untouched.
     int  export_published_3mf(const std::vector<std::string>& published_keys, const std::vector<Slic3r::PublishedMaterialEntry>& material_keys);
@@ -600,6 +603,8 @@ public:
     bool has_toolpaths_to_export() const;
     void export_toolpaths_to_obj() const;
     void reslice();
+    // The same current-plate workflow as the Slice Plate action, including setup and warnings.
+    void slice_current_plate();
     void reslice_SLA_supports(const ModelObject &object, bool postpone_error_messages = false);
     void reslice_SLA_hollowing(const ModelObject &object, bool postpone_error_messages = false);
     void reslice_SLA_until_step(SLAPrintObjectStep step, const ModelObject &object, bool postpone_error_messages = false);

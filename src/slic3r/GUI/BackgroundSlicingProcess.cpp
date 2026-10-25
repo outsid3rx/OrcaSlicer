@@ -258,23 +258,26 @@ void BackgroundSlicingProcess::process_fff()
         m_print->process();
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__
                                 << boost::format(" %1%: after print::process, send slicing complete event to gui...") % __LINE__;
-        if (m_current_plate->get_real_filament_map_mode(preset_bundle.project_config) < FilamentMapMode::fmmManual) {
-            std::vector<int> f_maps = m_fff_print->get_filament_maps();
-            m_current_plate->set_filament_maps(f_maps);
-            // The engine's concrete per-filament volume assignment is merged into the print
-            // config by the ToolOrdering write-back; reading it back keeps the plate config the
-            // next apply overlays equal to the written-back state (no diff, no re-invalidation)
-            // and persists the auto result (always concrete Std/HF, never the Hybrid seed).
-            std::vector<int> f_volume_maps = m_fff_print->get_filament_volume_maps();
-            m_current_plate->set_filament_volume_maps(f_volume_maps);
-        }
-        if (m_current_plate->get_real_filament_map_mode(preset_bundle.project_config) != FilamentMapMode::fmmNozzleManual) {
-            // The engine-resolved nozzle map is read back for every non-nozzle-manual mode so the
-            // plate config the next apply overlays matches the engine's written-back state
-            // (otherwise the full-config diff would invalidate the g-code on every apply).
-            std::vector<int> f_nozzle_maps = m_fff_print->get_filament_nozzle_maps();
-            m_current_plate->set_filament_nozzle_maps(f_nozzle_maps);
-        }
+        // The engine owns these results; the plate config belongs to the GUI.
+        // Use the existing cancellation-aware bridge rather than mutating its
+        // option map while the editor or an agent is reading it on the main thread.
+        auto filament_maps = m_fff_print->get_filament_maps();
+        auto volume_maps = m_fff_print->get_filament_volume_maps();
+        auto nozzle_maps = m_fff_print->get_filament_nozzle_maps();
+        std::exception_ptr mapping_error;
+        execute_ui_task([this, filament_maps = std::move(filament_maps), volume_maps = std::move(volume_maps),
+                         nozzle_maps = std::move(nozzle_maps), &mapping_error]() {
+            try {
+                const auto mode = m_current_plate->get_real_filament_map_mode(GUI::wxGetApp().preset_bundle->project_config);
+                if (mode < FilamentMapMode::fmmManual) {
+                    m_current_plate->set_filament_maps(filament_maps);
+                    m_current_plate->set_filament_volume_maps(volume_maps);
+                }
+                if (mode != FilamentMapMode::fmmNozzleManual)
+                    m_current_plate->set_filament_nozzle_maps(nozzle_maps);
+            } catch (...) { mapping_error = std::current_exception(); }
+        });
+        if (mapping_error) std::rethrow_exception(mapping_error);
         wxCommandEvent evt(m_event_slicing_completed_id);
         // Post the Slicing Finished message for the G-code viewer to update.
         // Passing the timestamp
@@ -402,7 +405,7 @@ void BackgroundSlicingProcess::thread_proc()
                                              (m_state == STATE_CANCELED) ? SlicingProcessCompletedEvent::Cancelled :
                                              exception                   ? SlicingProcessCompletedEvent::Error :
                                                                            SlicingProcessCompletedEvent::Finished,
-                                             exception);
+                                             exception, m_run_id.load());
             BOOST_LOG_TRIVIAL(info) << __FUNCTION__
                                     << boost::format(": send SlicingProcessCompletedEvent to main, status %1%") % evt.status();
             wxQueueEvent(GUI::wxGetApp().mainframe->m_plater, evt.Clone());
@@ -583,6 +586,7 @@ bool BackgroundSlicingProcess::start()
         return false;
     if (!this->idle())
         throw Slic3r::RuntimeError("Cannot start a background task, the worker thread is not idle.");
+    ++m_run_id;
     m_state = STATE_STARTED;
     m_print->set_cancel_callback([this]() { this->stop_internal(); });
     lck.unlock();

@@ -1,3 +1,4 @@
+#include <memory>
 #include "BBLNetworkPlugin.hpp"
 #include "NetworkAgent.hpp"
 
@@ -66,6 +67,8 @@ void BBLNetworkPlugin::shutdown()
 {
     // Note: Do not call instance() after shutdown() - the singleton is destroyed.
     if (s_instance) {
+        // An active submit owns plugin code and the agent until its worker returns.
+        if (s_instance->m_operation_leases->load() != 0) return;
         delete s_instance;
         s_instance = nullptr;
     }
@@ -84,6 +87,8 @@ BBLNetworkPlugin::~BBLNetworkPlugin()
 
 int BBLNetworkPlugin::initialize(bool using_backup, const std::string& version)
 {
+    if (m_operation_leases->load() != 0) return -1;
+    ++m_operation_generation;
     clear_load_error();
 
     std::string library;
@@ -217,6 +222,8 @@ int BBLNetworkPlugin::initialize(bool using_backup, const std::string& version)
 
 int BBLNetworkPlugin::unload()
 {
+    if (m_operation_leases->load() != 0) return -1;
+    ++m_operation_generation;
     // Orca: destroy the plugin agent while its creating DLL is still loaded, so the void* handle
     // never dangles into freed memory. A stale m_agent surviving the unload makes create_agent()
     // short-circuit on has_agent() after a hot reload, and the next call into the freshly loaded
@@ -293,6 +300,7 @@ void* BBLNetworkPlugin::create_agent(const std::string& log_dir)
     }
 
     if (m_create_agent) {
+        ++m_operation_generation;
         m_agent = m_create_agent(log_dir);
     }
 
@@ -302,12 +310,22 @@ void* BBLNetworkPlugin::create_agent(const std::string& log_dir)
 
 int BBLNetworkPlugin::destroy_agent()
 {
+    if (m_operation_leases->load() != 0) return -1;
+    ++m_operation_generation;
     int ret = 0;
     if (m_agent && m_destroy_agent) {
         ret = m_destroy_agent(m_agent);
     }
     m_agent = nullptr;
     return ret;
+}
+
+std::shared_ptr<void> BBLNetworkPlugin::retain_for_operation()
+{
+    if (!m_networking_module || !m_agent) return {};
+    const auto count = m_operation_leases;
+    ++*count;
+    return std::shared_ptr<void>(count.get(), [count](void*) { --*count; });
 }
 
 // ============================================================================

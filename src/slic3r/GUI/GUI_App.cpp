@@ -252,6 +252,7 @@
 #include "slic3r/GUI/ConfigWizard.hpp"
 #include "slic3r/GUI/Gizmos/GLGizmosManager.hpp"
 #include "slic3r/GUI/HttpServer.hpp"
+#include "slic3r/AgentControl/Hooks.hpp"
 #include "slic3r/GUI/ImGuiWrapper.hpp"
 #include "slic3r/GUI/ParamsDialog.hpp"
 #include "slic3r/GUI/ParamsPanel.hpp"
@@ -4920,6 +4921,9 @@ void release_window_pools();
 
 void GUI_App::recreate_GUI(const wxString &msg_name)
 {
+    // A setting callback can run a nested modal event loop. Do not destroy its owners
+    // while a remote command or a project serialization is still on that stack.
+    if (AgentControl::defer_recreate(plater(), [this, msg_name] { recreate_GUI(msg_name); })) return;
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "recreate_GUI enter";
     m_is_recreating_gui = true;
 
@@ -6523,6 +6527,13 @@ void maybe_attach_updater_signature(Http& http, const std::string& canonical_que
 
 void GUI_App::check_new_version_sf(bool show_tips, int by_user)
 {
+#ifdef SLIC3R_AGENT_CONTROL
+    // Upstream releases lack this fork's API. Keep updates explicit so an
+    // official build cannot silently replace the agent-enabled application.
+    if (by_user != 0)
+        wxLaunchDefaultBrowser("https://github.com/outsid3rx/OrcaSlicer/releases");
+    return;
+#endif
     AppConfig* app_config = wxGetApp().app_config;
     bool       check_stable_only = app_config->get_bool("check_stable_update_only");
     auto version_check_url = app_config->version_check_url();

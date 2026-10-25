@@ -649,7 +649,10 @@ void ArrangeJob::prepare()
     int state = m_plater->get_prepare_state();
     if (state == Job::JobPrepareState::PREPARE_STATE_DEFAULT) {
         only_on_partplate = false;
-        prepare_all();
+        if (m_explicit_selection)
+            prepare_selected();
+        else
+            prepare_all();
     }
     else if (state == Job::JobPrepareState::PREPARE_STATE_MENU) {
         only_on_partplate = true;   // only arrange items on current plate
@@ -692,6 +695,21 @@ void ArrangeJob::prepare()
 #endif
 
     check_unprintable();
+
+    // All native preset/plate reads belong to GUI preparation, never the worker.
+    auto& plate_list = m_plater->get_partplate_list();
+    const DynamicPrintConfig& global_config = wxGetApp().preset_bundle->full_config();
+    if (wxGetApp().preset_bundle->is_bbl_vendor() && params.avoid_extrusion_cali_region && global_config.opt_bool("scan_first_layer"))
+        plate_list.preprocess_nonprefered_areas(m_unselected, MAX_NUM_PLATES);
+    update_arrange_params(params, m_plater->config(), m_selected);
+    update_selected_items_inflation(m_selected, m_plater->config(), params);
+    update_unselected_items_inflation(m_unselected, m_plater->config(), params);
+    update_selected_items_axis_align(m_selected, m_plater->config(), params);
+    m_bedpts = get_shrink_bedpts(m_plater->config(), params);
+    const ImexArranger imex(m_imex, params, m_bedpts);
+    imex.add_keep_outs(m_unselected);
+    const bool enable_wrapping = global_config.option<ConfigOptionBool>("enable_wrapping_detection")->value;
+    plate_list.preprocess_exclude_areas(params.excluded_regions, global_config, enable_wrapping, 1, scale_(1));
 }
 
 void ArrangeJob::check_unprintable()
@@ -723,32 +741,15 @@ void ArrangeJob::process(Ctl &ctl)
 {
     static const auto arrangestr = _u8L("Arranging");
     ctl.update_status(0, arrangestr);
-    ctl.call_on_main_thread([this]{ prepare(); }).wait();;
+    ctl.call_on_main_thread([this]{ prepare(); }).get();
 
-    auto & partplate_list = m_plater->get_partplate_list();
-
-    const Slic3r::DynamicPrintConfig& global_config = wxGetApp().preset_bundle->full_config();
-    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
-    const bool is_bbl = wxGetApp().preset_bundle->is_bbl_vendor();
-    if (is_bbl && params.avoid_extrusion_cali_region && global_config.opt_bool("scan_first_layer"))
-        partplate_list.preprocess_nonprefered_areas(m_unselected, MAX_NUM_PLATES);
-
-    update_arrange_params(params, m_plater->config(), m_selected);
-    update_selected_items_inflation(m_selected, m_plater->config(), params);
-    update_unselected_items_inflation(m_unselected, m_plater->config(), params);
-    update_selected_items_axis_align(m_selected, m_plater->config(), params);
-
-    Points      bedpts = get_shrink_bedpts(m_plater->config(),params);
+    Points bedpts = m_bedpts;
 
     // Keep the parts on IDEX/IQEX plates in their primary zones; see ImexArranger.
     const ImexArranger imex(m_imex, params, bedpts);
     bedpts = imex.bed_shape();
-    imex.add_keep_outs(m_unselected);
 
-    bool   enable_wrapping = global_config.option<ConfigOptionBool>("enable_wrapping_detection")->value;
-    partplate_list.preprocess_exclude_areas(params.excluded_regions, global_config, enable_wrapping, 1, scale_(1));
-
-    BOOST_LOG_TRIVIAL(debug) << "arrange bedpts:" << bedpts[0].transpose() << ", " << bedpts[1].transpose() << ", " << bedpts[2].transpose() << ", " << bedpts[3].transpose();
+    BOOST_LOG_TRIVIAL(debug) << "arrange bed points: " << bedpts.size();
 
     params.stopcondition = [&ctl]() { return ctl.was_canceled(); };
 
@@ -804,7 +805,12 @@ void ArrangeJob::process(Ctl &ctl)
         we_have_unpackable_items ? _u8L("Arranging complete, but some items were not able to be arranged. Reduce spacing and try again.") : _u8L("Arranging done."));
 }
 
-ArrangeJob::ArrangeJob() : m_plater{wxGetApp().plater()} { }
+ArrangeJob::ArrangeJob(bool explicit_selection) : m_explicit_selection(explicit_selection), m_plater{wxGetApp().plater()} { }
+
+bool ArrangeJob::has_arranged_items() const
+{
+    return std::any_of(m_selected.begin(), m_selected.end(), [](const ArrangePolygon& polygon) { return polygon.is_arranged(); });
+}
 
 static std::string concat_strings(const std::set<std::string> &strings,
                                   const std::string &delim = "\n")

@@ -71,7 +71,13 @@ static void add_cut_volume(TriangleMesh& mesh, ModelObject* object, const ModelV
     vol->config.assign_config(src_volume->config);
     assert(vol->config.id().valid());
     assert(vol->config.id() != src_volume->config.id());
-    vol->set_material(src_volume->material_id(), *src_volume->material());
+    // Cut halves normally share the detached source Model. Replacing an
+    // already shared material would delete the very source being copied.
+    const ModelMaterial* material = src_volume->material();
+    if (material && object->get_model() != src_volume->get_object()->get_model())
+        vol->set_material(src_volume->material_id(), *material);
+    else
+        vol->set_material_id(src_volume->material_id());
     vol->cut_info = src_volume->cut_info;
 }
 
@@ -261,8 +267,14 @@ Cut::Cut(const ModelObject* object, int instance, const Transform3d& cut_matrix,
     : m_instance(instance), m_cut_matrix(cut_matrix), m_attributes(attributes)
 {
     m_model = Model();
-    if (object)
+    if (object) {
+        // An object clone keeps material IDs, but its materials belong to the
+        // parent Model. Detached cutting must copy that ownership as well.
+        if (const Model* source = object->get_model())
+            for (const auto& material : source->materials)
+                m_model.add_material(material.first, *material.second);
         m_model.add_object(*object);
+    }
 }
 
 void Cut::post_process(ModelObject* object, ModelObjectPtrs& cut_object_ptrs, bool keep, bool place_on_cut, bool flip)

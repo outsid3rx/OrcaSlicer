@@ -10,6 +10,8 @@
 #include <map>
 #include <functional>
 #include <mutex>
+#include <atomic>
+#include <cstdint>
 
 #if defined(_MSC_VER) || defined(_WIN32)
 #include <Windows.h>
@@ -301,6 +303,8 @@ public:
     static bool is_legacy_version(const std::string& version) { return version == BAMBU_NETWORK_AGENT_VERSION_LEGACY; }
     // The generation the loaded library speaks - what every call must dispatch on.
     NetworkAbi network_abi() const { return m_network_abi; }
+    std::shared_ptr<void> retain_for_operation();
+    std::uint64_t operation_generation() const { return m_operation_generation; }
     bool use_legacy_network() const { return m_network_abi == NetworkAbi::Legacy; }
 
     // ========================================================================
@@ -452,6 +456,8 @@ private:
 
     // ABI generation of the currently loaded library
     NetworkAbi m_network_abi{NetworkAbi::Unsupported};
+    std::uint64_t m_operation_generation = 0;
+    std::shared_ptr<std::atomic_uint> m_operation_leases = std::make_shared<std::atomic_uint>(0);
 
     // Function pointers
     func_check_debug_consistent m_check_debug_consistent{nullptr};

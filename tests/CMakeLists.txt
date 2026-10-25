@@ -95,6 +95,10 @@ add_subdirectory(fff_print)
 add_subdirectory(sla_print)
 add_subdirectory(filament_group)
 
+if (SLIC3R_GUI AND SLIC3R_AGENT_CONTROL)
+    add_subdirectory(agent_control)
+endif ()
+
 # End-to-end checks of the orca-slicer binary. Linux only: they read result.json, which the CLI
 # writes on Linux only. src/ is added before tests/, so the target is known here.
 if (UNIX AND NOT APPLE AND TARGET OrcaSlicer)

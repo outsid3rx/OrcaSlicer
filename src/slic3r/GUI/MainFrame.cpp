@@ -1,4 +1,10 @@
 #include "MainFrame.hpp"
+#include "slic3r/AgentControl/Hooks.hpp"
+#ifdef SLIC3R_AGENT_CONTROL
+#include "slic3r/AgentControl/AgentControl.hpp"
+#endif
+#include <cstdlib>
+#include <memory>
 
 #include <wx/event.h>
 #include "slic3r/GUI/Event.hpp"
@@ -682,6 +688,10 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
 
     // declare events
     Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& event) {
+        if (event.CanVeto() && AgentControl::defer_close(m_plater)) {
+            event.Veto();
+            return;
+        }
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__<< ": mainframe received close_widow event";
         if (event.CanVeto() && m_plater->get_view3D_canvas3D()->get_gizmos_manager().is_in_editing_mode(true)) {
             // prevents to open the save dirty project dialog
@@ -828,6 +838,11 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
 
     wxGetApp().persist_window_geometry(this, true);
     wxGetApp().persist_window_geometry(&m_settings_dialog, true);
+#ifdef SLIC3R_AGENT_CONTROL
+    const char* control_enabled = std::getenv("ORCA_AGENT_CONTROL");
+    if (wxGetApp().is_editor() && m_plater && control_enabled && std::string(control_enabled) == "1")
+        m_agent_control = std::make_unique<AgentControl::Controller>(*this, *m_plater);
+#endif
 }
 
 bool MainFrame::handle_global_shortcut(const KeyChord& chord)
@@ -1291,6 +1306,9 @@ void MainFrame::update_edge_panels()
 // Called when closing the application and when switching the application language.
 void MainFrame::shutdown()
 {
+#ifdef SLIC3R_AGENT_CONTROL
+    if (m_agent_control) m_agent_control->stop();
+#endif
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "MainFrame::shutdown enter";
     m_idle.stop();
     if (ProjectPanel* project = ProjectPanel::if_built())

@@ -1,4 +1,5 @@
 #include "Plater.hpp"
+#include "slic3r/AgentControl/Hooks.hpp"
 #include "../Utils/NetworkAgent.hpp"
 #include "IPrinterAgent.hpp"
 #include "CalibUtils.hpp"
@@ -8942,6 +8943,8 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
                                              bool* published_out,
                                              bool* config_loaded_out)
 {
+    AgentControl::OperationBlock control_block(q);
+    AgentControl::document_changed(q);
     if (config_loaded_out != nullptr)
         *config_loaded_out = false;
 
@@ -10817,6 +10820,8 @@ void Plater::priv::delete_all_objects_from_model()
 
 void Plater::priv::reset(bool apply_presets_change, bool reload_presets)
 {
+    AgentControl::OperationBlock control_block(q);
+    AgentControl::document_changed(q);
     // TakeSnapshot below and load_current_presets() further down each re-evaluate the
     // aggregate dirty flag against a baseline that hasn't been reset yet, so they can toggle
     // is_dirty() back and forth several times before it settles; coalesce those into one event.
@@ -11630,6 +11635,7 @@ bool Plater::priv::restart_background_process(unsigned int state)
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << boost::format(", Line %1%: print is valid, try to start it now")%__LINE__;
         // The print is valid and it can be started.
         if (this->background_process.start()) {
+            AgentControl::slice_started(q, background_process.run_id());
             if (!show_warning_dialog)
                 on_slicing_began();
             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << boost::format(", Line %1%: start successfully")%__LINE__;
@@ -11640,6 +11646,7 @@ bool Plater::priv::restart_background_process(unsigned int state)
         PartPlate* cur_plate = background_process.get_current_plate();
         if (cur_plate->is_slice_result_valid() && ((state & UPDATE_BACKGROUND_PROCESS_FORCE_RESTART) != 0)) {
             if (this->background_process.start()) {
+                AgentControl::slice_started(q, background_process.run_id());
                 if (!show_warning_dialog)
                     on_slicing_began();
                 BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << boost::format(", Line %1%: start successfully")%__LINE__;
@@ -13138,6 +13145,9 @@ void Plater::priv::on_select_preset(wxCommandEvent &evt)
 
 void Plater::priv::on_slicing_update(SlicingStatusEvent &evt)
 {
+    AgentControl::slice_progress(q, evt.run_id, evt.status.percent, evt.status.text,
+        (evt.status.flags & (PrintBase::SlicingStatus::UPDATE_PRINT_STEP_WARNINGS |
+                            PrintBase::SlicingStatus::UPDATE_PRINT_OBJECT_STEP_WARNINGS)) != 0);
     BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << boost::format(": event_type %1%, percent %2%, text %3%") % evt.GetEventType() % evt.status.percent % evt.status.text;
     // The plate's status callback has already prefixed the text with "Slicing plate N:".
     if (evt.status.percent >= 0) {
@@ -13427,6 +13437,8 @@ void Plater::priv::on_process_completed(SlicingProcessCompletedEvent &evt)
         ctx.msg  = evt.cancelled() ? "cancelled" : (has_error ? lifecycle_error_msg : std::string());
         Slic3r::fire_lifecycle_event(Slic3r::LifecycleEvent::SlicingJobComplete, ctx);
     }
+
+    AgentControl::slice_finished(q, evt.run_id(), evt.success(), evt.cancelled());
 
     //BBS: set the current plater's slice result to valid
     if (!this->background_process.empty())
@@ -15254,6 +15266,7 @@ int Plater::priv::get_active_snapshot_index()
 
 void Plater::priv::take_snapshot(const std::string& snapshot_name, const UndoRedo::SnapshotType snapshot_type)
 {
+    AgentControl::OperationBlock control_block(q);
     if (m_prevent_snapshots > 0)
         return;
     assert(m_prevent_snapshots >= 0);
@@ -16138,11 +16151,8 @@ LoadType determine_load_type(std::string filename, std::string override_setting 
 
 // BBS: FIXME, missing resotre logic
 void Plater::load_project(wxString const& filename2,
-    wxString const& originfile)
+    wxString const& originfile, wxString const& source_filename)
 {
-    model().calib_pa_pattern.reset(nullptr);
-    model().plates_custom_gcodes.clear();
-
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "filename is: " << filename2 << "and originfile is: " << originfile;
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__;
     auto filename = filename2;
@@ -16171,6 +16181,9 @@ void Plater::load_project(wxString const& filename2,
         return;
     }
 
+    // Preserve the current document when the unsaved-changes dialog is cancelled.
+    model().calib_pa_pattern.reset(nullptr);
+    model().plates_custom_gcodes.clear();
     m_loading_project = true;
     ScopeGuard loading_project_sc([this]() { m_loading_project = false; }); // Make sure state restored on any early return
 
@@ -16223,7 +16236,7 @@ void Plater::load_project(wxString const& filename2,
     // if res is empty no data has been loaded
     if (!res.empty() && !loaded_published && (load_restore || !(strategy & LoadStrategy::Silence))) {
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << __LINE__ << " call set_project_filename: " << (load_restore ? originfile : filename);
-        p->set_project_filename(load_restore ? originfile : filename);
+        p->set_project_filename(load_restore ? originfile : source_filename.empty() ? filename : source_filename);
         if (load_restore && originfile.IsEmpty()) {
         p->set_project_name(_L("Untitled"));
         }
@@ -16238,7 +16251,7 @@ void Plater::load_project(wxString const& filename2,
     } else {
         if (using_exported_file()) {
             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << __LINE__ << " using ecported set project filename: " << filename;
-            p->set_project_filename(filename);
+            p->set_project_filename(source_filename.empty() ? filename : source_filename);
         } else if (loaded_published && !res.empty()) {
             // A "published" 3MF loads as a new project: its path must not become the project
             // filename (Save/Ctrl-S prompts for a destination instead of overwriting it);
@@ -16247,7 +16260,7 @@ void Plater::load_project(wxString const& filename2,
             // cancelled load must not pollute "Recently opened".
             p->set_project_name(_L("Untitled"));
             if (!filename.IsEmpty())
-                wxGetApp().mainframe->add_to_recent_projects(filename);
+                wxGetApp().mainframe->add_to_recent_projects(source_filename.empty() ? filename : source_filename);
         }
 
     }
@@ -19461,13 +19474,40 @@ void Plater::convert_unit(ConversionType conv_type)
     }
 }
 
-void Plater::apply_cut_object_to_model(size_t obj_idx, const ModelObjectPtrs& new_objects)
+std::vector<size_t> Plater::agent_import_objects(const ModelObjectPtrs& objects, bool auto_drop, bool preserve_placement)
+{
+    if (preserve_placement) {
+        std::vector<size_t> result;
+        result.reserve(objects.size());
+        for (const ModelObject* object : objects) {
+            result.push_back(model().objects.size());
+            model().add_object(*object);
+        }
+        // Rebuild every instance, including linked copies on different plates.
+        // ObjectList::add_object_to_list only notifies instance zero.
+        p->partplate_list.reload_all_objects();
+        sidebar().obj_list()->reload_all_plates();
+        update();
+        object_list_changed();
+        p->schedule_background_process();
+        return result;
+    }
+    auto result = p->load_model_objects(objects, true, false, auto_drop);
+    update();
+    return result;
+}
+
+void Plater::apply_cut_object_to_model(size_t obj_idx, const ModelObjectPtrs& new_objects, bool auto_drop, bool preserve_placement)
 {
     model().delete_object(obj_idx);
+    p->partplate_list.notify_instance_removed(static_cast<int>(obj_idx), -1);
     sidebar().obj_list()->delete_object_from_list(obj_idx);
 
     // suppress to call selection update for Object List to avoid call of early Gizmos on/off update
-    p->load_model_objects(new_objects, false, false);
+    if (preserve_placement)
+        agent_import_objects(new_objects, auto_drop, true);
+    else
+        p->load_model_objects(new_objects, false, false, auto_drop);
 
     // now process all updates of the 3d scene
     update();
@@ -19737,6 +19777,24 @@ bool Plater::export_3mf_copy(const boost::filesystem::path& output_path)
     // The project save's layout, plus Silence so the project file name stays as it is. Unlike a save
     // it never adds FullPathSources: a copy is for sharing, and those are paths on this machine.
     return export_3mf(output_path, SaveStrategy::SplitModel | SaveStrategy::ShareMesh | SaveStrategy::Silence) == 0;
+}
+
+int Plater::agent_export_print_artifact(const boost::filesystem::path& output_path, int plate_index)
+{
+    if (plate_index < 0 || plate_index >= p->partplate_list.get_plate_count())
+        return -1;
+    auto* plate = p->partplate_list.get_plate(plate_index);
+    if (!plate->is_slice_result_valid() || !plate->is_valid_gcode_file())
+        return -1;
+    Model& model = p->model;
+    SvgArchivePathsRestorer svg_paths(model);
+    const std::shared_ptr<ModelDesignInfo> design_info = model.design_info;
+    if (!design_info)
+        model.design_info = std::make_shared<ModelDesignInfo>();
+    ScopeGuard restore_design_info([&model, design_info] { model.design_info = design_info; });
+    return export_3mf(output_path,
+        SaveStrategy::Silence | SaveStrategy::SkipModel | SaveStrategy::WithGcode | SaveStrategy::SkipAuxiliary,
+        plate_index);
 }
 
 // Export the current project as a "published" 3MF: a pure export that never touches the
@@ -20404,6 +20462,7 @@ void publish(Model &model, SaveStrategy strategy) {
 // BBS: backup
 int Plater::export_3mf(const boost::filesystem::path& output_path, SaveStrategy strategy, int export_plate_idx, Export3mfProgressFn proFn)
 {
+    AgentControl::OperationBlock control_block(this);
     int ret = 0;
     //if (p->model.objects.empty()) {
     //    MessageDialog dialog(nullptr, _L("No objects to export."), _L("Save project"), wxYES);
@@ -20742,6 +20801,12 @@ bool Plater::is_multi_extruder_ams_empty()
         }
     }
     return true;
+}
+
+void Plater::slice_current_plate()
+{
+    SimpleEvent event(EVT_GLTOOLBAR_SLICE_PLATE);
+    p->on_action_slice_plate(event);
 }
 
 //BBS: add multiple plate reslice logic
@@ -21289,10 +21354,20 @@ void Plater::single_snapshots_leave(SingleSnapshot *single)
 {
     p->single_snapshots_leave(single);
 }
-void Plater::undo() { p->undo(); }
-void Plater::redo() { p->redo(); }
+void Plater::undo() {
+    AgentControl::OperationBlock control_block(this);
+    AgentControl::inputs_changed(this);
+    p->undo();
+}
+void Plater::redo() {
+    AgentControl::OperationBlock control_block(this);
+    AgentControl::inputs_changed(this);
+    p->redo();
+}
 void Plater::undo_to(int selection)
 {
+    AgentControl::OperationBlock control_block(this);
+    AgentControl::inputs_changed(this);
     if (selection == 0) {
         p->undo();
         return;
@@ -21303,6 +21378,8 @@ void Plater::undo_to(int selection)
 }
 void Plater::redo_to(int selection)
 {
+    AgentControl::OperationBlock control_block(this);
+    AgentControl::inputs_changed(this);
     if (selection == 0) {
         p->redo();
         return;
@@ -21507,6 +21584,8 @@ void Plater::config_change_notification(const DynamicPrintConfig &config, const 
 
 void Plater::on_config_change(const DynamicPrintConfig &config)
 {
+    AgentControl::OperationBlock control_block(this);
+    AgentControl::inputs_changed(this);
     bool update_scheduled = false;
     bool bed_shape_changed = false;
     bool exclusion_preview_changed = false;
@@ -22221,6 +22300,7 @@ void Plater::changed_mesh(int obj_idx)
 }
 
 void Plater::changed_object(ModelObject &object){
+    AgentControl::inputs_changed(this);
     assert(object.get_model() == &p->model); // is object from same model?
     object.invalidate_bounding_box();
     p->partplate_list.invalidate_exclusion_volume_previews();
@@ -22262,6 +22342,7 @@ void Plater::changed_object(int obj_idx)
 
 void Plater::changed_objects(const std::vector<size_t>& object_idxs)
 {
+    AgentControl::inputs_changed(this);
     if (object_idxs.empty())
         return;
 

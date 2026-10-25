@@ -336,13 +336,16 @@ public:
     static std::string  get_iot_type_string(Preset::Type type);
     static Preset::Type get_type_from_string(std::string type_str);
     void                load_info(const std::string& file);
-    void                save_info(std::string file = "");
+    void                save_info(std::string file = "", bool create_only = false);
     void                remove_files(bool cloud_already_deleted = false);
 
     //BBS: add logic for only difference save
     //if parent_config is null, save all keys, otherwise, only save difference
     // Returns false when the preset file could not be written.
-    bool                save(DynamicPrintConfig* parent_config);
+    // create_only publishes a complete new file atomically and never replaces
+    // an existing path or follows a destination symlink. Its sidecar is written
+    // by the caller after the new preset's sync metadata has been assigned.
+    bool                save(DynamicPrintConfig* parent_config, bool create_only = false);
     void                reload(Preset const & parent);
 
     // Return a label of this preset, consisting of a name and a "(modified)" suffix, if this preset is dirty.
@@ -692,7 +695,7 @@ public:
     // a new preset is stored into the list of presets.
     // All presets are marked as not modified and the new preset is activated.
     //BBS: add project embedded preset logic
-    void            save_current_preset(const std::string &new_name, bool detach = false, bool save_to_project = false, Preset* _curr_preset = nullptr);
+    void            save_current_preset(const std::string &new_name, bool detach = false, bool save_to_project = false, Preset* _curr_preset = nullptr, bool create_only = false);
     // Insert a standalone user preset holding the full resolved config (no inheritance,
     // no vendor links): the libslic3r equivalent of "Detach from parent". Takes a
     // resolved config, clears parent/vendor/alias metadata, stamps filament_settings_id.

@@ -60,6 +60,7 @@ class MultiSwitchButton;
 namespace Slic3r {
 
 class ModelConfig;
+class ModelObject;
 class ObjectBase;
 
 namespace GUI {
@@ -378,7 +379,7 @@ public:
 	void		compare_preset();
 	void		transfer_options(const std::string&name_from, const std::string&name_to, std::vector<std::string> options);
 	//BBS: add project embedded preset relate logic
-	void        save_preset(std::string name = std::string(), bool detach = false, bool save_to_project = false, bool from_input = false, std::string input_name = "");
+	void        save_preset(std::string name = std::string(), bool detach = false, bool save_to_project = false, bool from_input = false, std::string input_name = "", bool create_only = false);
 	//void		save_preset(std::string name = std::string(), bool detach = false);
 
 	void		delete_preset();
@@ -458,6 +459,9 @@ public:
 	// Throws std::invalid_argument for an unknown key, a value the option cannot parse, or a duplicate
 	// key; std::runtime_error when the preset or main window is unavailable.
 	void			apply_preset_config_values(const std::vector<std::pair<std::string, std::string>>& values);
+    // Commit an already validated edited-preset copy as one native Undo operation.
+    // Used by the explicit-target API; callers exclude executable/network fields.
+    void apply_agent_config(const DynamicPrintConfig& candidate);
 	virtual void	reload_config();
     void            update_mode();
     void            update_visibility();
@@ -606,6 +610,12 @@ public:
 
 	bool has_key(std::string const &key);
 
+    // Explicit-target object edit; does not select another object or edit the global preset.
+    // Validates the complete patch before creating one undo snapshot.
+    void apply_object_config_values(ModelObject& object,
+        const std::vector<std::pair<std::string, std::string>>& values,
+        const std::vector<std::string>& unset);
+
 protected:
 	virtual void    activate_selected_page(std::function<void()> throw_if_canceled) override;
 
@@ -631,6 +641,7 @@ protected:
 class TabPrintPlate : public TabPrintModel
 {
 public:
+    static const std::vector<std::string>& agent_plate_keys();
 	//BBS: GUI refactor
 	TabPrintPlate(ParamsPanel* parent);
 	~TabPrintPlate() {}

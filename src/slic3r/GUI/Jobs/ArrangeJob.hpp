@@ -4,6 +4,7 @@
 
 #include <map>
 #include "libslic3r/Polygon.hpp"
+#include "libslic3r/Point.hpp"
 #include <exception>
 #include <optional>
 #include <vector>
@@ -54,6 +55,9 @@ class ArrangeJob : public Job
     // The zones are stored already converted to plate-local coordinates, which is the space the
     // arranger works in.
     ImexArrangeInput m_imex;
+    // Prepared on the GUI thread; process() only reads immutable geometry/config inputs.
+    Points m_bedpts;
+    bool m_explicit_selection = false;
 
     arrangement::ArrangeParams params;
     int current_plate_index = 0;
@@ -90,7 +94,8 @@ public:
 
     void process(Ctl &ctl) override;
 
-    ArrangeJob();
+    explicit ArrangeJob(bool explicit_selection = false);
+    bool has_arranged_items() const;
 
     int status_range() const
     {

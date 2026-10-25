@@ -5440,8 +5440,8 @@ void PartPlate::update_slice_result_valid_state(bool valid)
 //update current slice context into backgroud slicing process
 void PartPlate::update_slice_context(BackgroundSlicingProcess & process)
 {
-	auto statuscb = [this](const Slic3r::PrintBase::SlicingStatus& status) {
-		Slic3r::SlicingStatusEvent *event = new Slic3r::SlicingStatusEvent(EVT_SLICING_UPDATE, 0, status);
+	auto statuscb = [this, &process](const Slic3r::PrintBase::SlicingStatus& status) {
+		Slic3r::SlicingStatusEvent *event = new Slic3r::SlicingStatusEvent(EVT_SLICING_UPDATE, 0, status, process.run_id());
 		//BBS: GUI refactor: add plate info befor message
 		if (status.message_type == Slic3r::PrintStateBase::SlicingDefaultNotification) {
 			// TRN Slicing progress. %1% is the plate number, %2% the current slicing step.

@@ -23,6 +23,7 @@
 #endif // __APPLE__
 
 #include <string>
+#include <memory>
 #include <map>
 #include <vector>
 
@@ -50,6 +51,9 @@
 #include "calib_dlg.hpp"
 #include "MultiMachinePage.hpp"
 #include "slic3r/plugin/host/PluginPages.hpp"
+#ifdef SLIC3R_AGENT_CONTROL
+#include "slic3r/AgentControl/AgentControl.hpp"
+#endif
 
 // Stable identifiers for MainFrame::m_tabpanel's built-in pages. These are
 // names rather than positional indices so optional pages cannot shift them.
@@ -503,6 +507,9 @@ public:
     BBLTopbar*            m_topbar{ nullptr };
     PrintHostQueueDialog* printhost_queue_dlg() { return m_printhost_queue_dlg; }
     Plater*               m_plater { nullptr };
+#ifdef SLIC3R_AGENT_CONTROL
+    std::unique_ptr<AgentControl::Controller> m_agent_control;
+#endif
     // Lazy pages, created once and kept for the frame's life; their panels are reached
     // through LazyInstance's statics, and show_device() only moves pages in and out of the book.
 #ifdef SLIC3R_CAD

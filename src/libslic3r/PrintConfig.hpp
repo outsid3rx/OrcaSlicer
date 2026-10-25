@@ -23,6 +23,7 @@
 #include "Polygon.hpp"
 #include <boost/container_hash/hash.hpp>
 #include <algorithm>
+#include <atomic>
 #include <boost/preprocessor/facilities/empty.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
@@ -2666,7 +2667,7 @@ public:
     virtual uint64_t    timestamp() const throw() { return m_timestamp; }
     bool                timestamp_matches(const ModelConfig &rhs) const throw() { return m_timestamp == rhs.m_timestamp; }
     // Not thread safe! Should not be called from other than the main thread!
-    void                touch() { m_timestamp = ++ s_last_timestamp; }
+    void                touch() { m_timestamp = s_last_timestamp.fetch_add(1, std::memory_order_relaxed) + 1; }
 
 private:
     friend class cereal::access;
@@ -2675,7 +2676,7 @@ private:
     uint64_t                    m_timestamp { 1 };
     DynamicPrintConfig          m_data;
 
-    static uint64_t             s_last_timestamp;
+    static std::atomic<uint64_t> s_last_timestamp;
 };
 
 // const std::vector<double> &fv_matrix:  origin matrix from json

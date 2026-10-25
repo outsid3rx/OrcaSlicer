@@ -146,6 +146,8 @@ static void validate_custom_gcode_cb(Tab* tab, const wxString& title, const t_co
 
 static const std::vector<std::string> plate_keys = { "curr_bed_type", "skirt_start_angle", "first_layer_print_sequence", "first_layer_sequence_choice", "other_layers_print_sequence", "other_layers_sequence_choice", "print_sequence", "spiral_mode"};
 
+const std::vector<std::string>& TabPrintPlate::agent_plate_keys() { return plate_keys; }
+
 static std::pair<std::string, std::string> extruder_variant_keys[]{
     {},                                                  // invalid
     {"print_extruder_id", "print_extruder_variant"},     // Preset::TYPE_PRINT
@@ -1777,6 +1779,38 @@ void Tab::apply_preset_config_values(const std::vector<std::pair<std::string, st
     reload_config();
     update_dirty();
     update();
+}
+
+void Tab::apply_agent_config(const DynamicPrintConfig& candidate)
+{
+    if (!m_config || !wxGetApp().plater())
+        throw std::runtime_error("The edited preset or main window is unavailable");
+    if (*m_config == candidate) return;
+    // Avoid applying the batch through per-field callbacks: intermediate states
+    // can trigger fix-up dialogs despite the complete candidate being valid.
+    const DynamicPrintConfig before(*m_config);
+    const auto refresh = [&] {
+        m_preset_bundle->update_compatible(PresetSelectCompatibleType::Never);
+        reload_config();
+        update_dirty();
+        update();
+        if (m_type == Preset::TYPE_PRINTER) {
+            // This edit cannot change vendor/backend identity. The ordinary
+            // selection callback also checks vendor updates and switches agents;
+            // neither belongs to an edited-copy parameter transaction.
+            wxGetApp().plater()->sidebar().update_presets(m_type);
+            wxGetApp().plater()->update_project_dirty_from_presets();
+        } else on_presets_changed();
+    };
+    wxGetApp().plater()->take_snapshot("Apply preset settings");
+    *m_config = candidate;
+    try {
+        refresh();
+    } catch (...) {
+        *m_config = before;
+        refresh();
+        throw;
+    }
 }
 
 // Reload current $self->{config} (aka $self->{presets}->edited_preset->config) into the UI fields.
@@ -3759,6 +3793,53 @@ void TabPrintModel::set_model_config(std::map<ObjectBase *, ModelConfig *> const
     m_object_configs = object_configs;
     m_prints.get_selected_preset().config.apply(*m_parent_tab->m_config);
     update_model_config();
+}
+
+void TabPrintModel::apply_object_config_values(ModelObject& object,
+    const std::vector<std::pair<std::string, std::string>>& values,
+    const std::vector<std::string>& unset)
+{
+    auto* plater = wxGetApp().plater();
+    if (!plater || object.get_model() != &plater->model())
+        throw std::invalid_argument("The target object is no longer in the current model");
+    // This entry point edits only object settings, never a volume, plate or inherited preset.
+    if (dynamic_cast<TabPrintObject*>(this) == nullptr)
+        throw std::invalid_argument("Object settings require the object settings tab");
+    DynamicPrintConfig before(object.config.get()), candidate(before);
+    std::set<std::string> seen;
+    for (const auto& entry : values) {
+        if (!has_key(entry.first) || !seen.insert(entry.first).second)
+            throw std::invalid_argument("Invalid or duplicate object setting: " + entry.first);
+        candidate.set_deserialize_strict(entry.first, entry.second);
+    }
+    for (const auto& key : unset) {
+        if (!has_key(key) || !seen.insert(key).second)
+            throw std::invalid_argument("Invalid or duplicate object setting: " + key);
+        candidate.erase(key);
+    }
+    if (candidate == before) return;
+    plater->take_snapshot(_u8L("Apply object settings"));
+    auto refresh = [&] {
+        // Refresh the selected settings owner without rebinding it to the target.
+        notify_changed(&object);
+        update_model_config();
+        reload_config();
+        // Settings change neither geometry nor placement. The native background apply
+        // reads object overrides independently of the global process config.
+        auto full_config = wxGetApp().preset_bundle->full_config();
+        wxGetApp().mainframe->on_config_changed(&full_config);
+        for (auto* plate : plater->get_partplate_list().get_plate_list())
+            plate->update_slice_result_valid_state(false);
+        wxGetApp().params_panel()->notify_object_config_changed();
+    };
+    object.config.assign_config(std::move(candidate));
+    try {
+        refresh();
+    } catch (...) {
+        object.config.assign_config(std::move(before));
+        refresh();
+        throw;
+    }
 }
 
 static std::vector<std::string> variant_keys(DynamicPrintConfig const & config)
@@ -8117,7 +8198,7 @@ void Tab::transfer_options(const std::string &name_from, const std::string &name
 // Wizard calls save_preset with a name "My Settings", otherwise no name is provided and this method
 // opens a Slic3r::GUI::SavePresetDialog dialog.
 //BBS: add project embedded preset relate logic
-void Tab::save_preset(std::string name /*= ""*/, bool detach, bool save_to_project, bool from_input, std::string input_name )
+void Tab::save_preset(std::string name /*= ""*/, bool detach, bool save_to_project, bool from_input, std::string input_name, bool create_only)
 {
     // ORCA: Validate before opening any save-name UI for filament presets.
     if (!validate_filament_temperature_pairs())
@@ -8160,6 +8241,7 @@ void Tab::save_preset(std::string name /*= ""*/, bool detach, bool save_to_proje
         exist_preset = true;
     }
 
+    const auto before_create_only = create_only ? std::make_unique<DynamicPrintConfig>(*m_config) : nullptr;
     // Orca: check if compatible_printers exists and is not empty, set it to the current printer if it is empty
     // Ensures that custom filaments based on system are not accidentally allowed for all printers
     // Can still be set for all after creation
@@ -8170,7 +8252,11 @@ void Tab::save_preset(std::string name /*= ""*/, bool detach, bool save_to_proje
             compatible_printers->values.push_back(_curr_printer->name);
     }
     // Save the preset into Slic3r::data_dir / presets / section_name / preset_name.json
-    m_presets->save_current_preset(name, detach, save_to_project, nullptr);
+    try { m_presets->save_current_preset(name, detach, save_to_project, nullptr, create_only); }
+    catch (...) {
+        if (before_create_only) *m_config = *before_create_only;
+        throw;
+    }
 
     //BBS create new settings
     new_preset = m_presets->find_preset(name, false, true);
@@ -8191,7 +8277,7 @@ void Tab::save_preset(std::string name /*= ""*/, bool detach, bool save_to_proje
             new_preset->user_id = wxGetApp().getAgent()->get_user_id();
         BOOST_LOG_TRIVIAL(info) << "sync_preset: create preset = " << new_preset->name;
     }
-    new_preset->save_info();
+    new_preset->save_info({}, create_only);
 
     // Mark the print & filament enabled if they are compatible with the currently selected preset.
     // If saving the preset changes compatibility with other presets, keep the now incompatible dependent presets selected, however with a "red flag" icon showing that they are no more compatible.

@@ -3478,20 +3478,8 @@ void GLGizmoCut3D::apply_connectors_in_model(ModelObject* mo, int &dowels_count)
     if (m_connector_mode == CutConnectorMode::Manual) {
         clear_selection();
 
-        for (CutConnector&connector : mo->cut_connectors) {
-            connector.rotation_m = m_rotation_m;
-
-            if (connector.attribs.type == CutConnectorType::Dowel) {
-                if (connector.attribs.style == CutConnectorStyle::Prism)
-                    connector.height *= 2;
-                dowels_count ++;
-            }
-            else {
-                // calculate shift of the connector center regarding to the position on the cut plane
-                connector.pos += m_cut_normal * 0.5 * double(connector.height);
-            }
-        }
-        apply_cut_connectors(mo, _u8L("Connector"));
+        dowels_count += prepare_cut_connectors(*mo, m_rotation_m, m_cut_normal, _u8L("Connector"),
+                                               m_snap_space_proportion, m_snap_bulge_proportion);
     }
 }
 
@@ -4062,7 +4050,7 @@ void GLGizmoCut3D::data_changed(bool is_serializing)
 
 
 
-indexed_triangle_set GLGizmoCut3D::get_connector_mesh(CutConnectorAttributes connector_attributes)
+indexed_triangle_set make_cut_connector_mesh(CutConnectorAttributes connector_attributes, double snap_space, double snap_bulge)
 {
     indexed_triangle_set connector_mesh;
 
@@ -4085,7 +4073,7 @@ indexed_triangle_set GLGizmoCut3D::get_connector_mesh(CutConnectorAttributes con
     }
 
     if (connector_attributes.type == CutConnectorType::Snap)
-        connector_mesh = its_make_snap(1.0, 1.0, m_snap_space_proportion, m_snap_bulge_proportion);
+        connector_mesh = its_make_snap(1.0, 1.0, snap_space, snap_bulge);
     else if (connector_attributes.style == CutConnectorStyle::Prism)
         connector_mesh = its_make_cylinder(1.0, 1.0, (2 * PI / sectorCount));
     else if (connector_attributes.type == CutConnectorType::Plug)
@@ -4096,14 +4084,15 @@ indexed_triangle_set GLGizmoCut3D::get_connector_mesh(CutConnectorAttributes con
     return connector_mesh;
 }
 
-void GLGizmoCut3D::apply_cut_connectors(ModelObject* mo, const std::string& connector_name)
+void add_cut_connector_volumes(ModelObject& object, const std::string& connector_name, double snap_space, double snap_bulge)
 {
+    ModelObject* mo = &object;
     if (mo->cut_connectors.empty())
         return;
 
     size_t connector_id = mo->cut_id.connectors_cnt();
     for (const CutConnector& connector : mo->cut_connectors) {
-        TriangleMesh mesh = TriangleMesh(get_connector_mesh(connector.attribs));
+        TriangleMesh mesh = TriangleMesh(make_cut_connector_mesh(connector.attribs, snap_space, snap_bulge));
         // Mesh will be centered when loading.
         ModelVolume* new_volume = mo->add_volume(std::move(mesh), ModelVolumeType::NEGATIVE_VOLUME);
 
@@ -4120,6 +4109,35 @@ void GLGizmoCut3D::apply_cut_connectors(ModelObject* mo, const std::string& conn
     // delete all connectors
     mo->cut_connectors.clear();
 }
+
+indexed_triangle_set GLGizmoCut3D::get_connector_mesh(CutConnectorAttributes attributes)
+{
+    return make_cut_connector_mesh(attributes, m_snap_space_proportion, m_snap_bulge_proportion);
+}
+
+void GLGizmoCut3D::apply_cut_connectors(ModelObject* object, const std::string& name)
+{
+    add_cut_connector_volumes(*object, name, m_snap_space_proportion, m_snap_bulge_proportion);
+}
+
+int prepare_cut_connectors(ModelObject& object, const Transform3d& rotation, const Vec3d& normal,
+                           const std::string& name, double snap_space, double snap_bulge)
+{
+    int dowels_count = 0;
+    for (CutConnector& connector : object.cut_connectors) {
+        connector.rotation_m = rotation;
+        if (connector.attribs.type == CutConnectorType::Dowel) {
+            if (connector.attribs.style == CutConnectorStyle::Prism)
+                connector.height *= 2;
+            ++dowels_count;
+        } else {
+            connector.pos += normal * 0.5 * double(connector.height);
+        }
+    }
+    add_cut_connector_volumes(object, name, snap_space, snap_bulge);
+    return dowels_count;
+}
+
 
 
 

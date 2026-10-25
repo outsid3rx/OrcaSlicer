@@ -1031,6 +1031,20 @@ wxDataViewItem ObjectDataViewModel::Delete(const wxDataViewItem &item)
 	//       thus removing the node from it doesn't result in freeing it
     if (node->m_type & (itInstanceRoot | itLayerRoot))
     {
+        // A height range without a visible layer (for example a legacy config
+        // missing extruder) can leave an empty root. Removing an object must
+        // make progress even for that tree: the parent repeatedly deletes its
+        // last child, so returning with this empty root attached loops forever.
+        if (node->GetChildCount() == 0) {
+            node_parent->GetChildren().Remove(node);
+            delete node;
+#ifndef __WXGTK__
+            if (node_parent->GetChildCount() == 0)
+                node_parent->m_container = false;
+#endif
+            ItemDeleted(parent, item);
+            return parent;
+        }
         // node can be deleted by the Delete, let's check its type while we safely can
         bool is_instance_root = (node->m_type & itInstanceRoot);
 

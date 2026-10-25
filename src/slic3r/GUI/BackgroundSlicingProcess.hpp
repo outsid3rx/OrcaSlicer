@@ -2,6 +2,8 @@
 #define slic3r_GUI_BackgroundSlicingProcess_hpp_
 
 #include <exception>
+#include <atomic>
+#include <cstdint>
 #include <cassert>
 #include <cstddef>
 #include "libslic3r/Config.hpp"
@@ -40,11 +42,12 @@ class SLAPrint;
 class SlicingStatusEvent : public wxEvent
 {
 public:
-	SlicingStatusEvent(wxEventType eventType, int winid, const PrintBase::SlicingStatus &status) :
-		wxEvent(winid, eventType), status(std::move(status)) {}
+	SlicingStatusEvent(wxEventType eventType, int winid, const PrintBase::SlicingStatus &status, std::uint64_t run_id = 0) :
+		wxEvent(winid, eventType), status(std::move(status)), run_id(run_id) {}
 	virtual wxEvent *Clone() const { return new SlicingStatusEvent(*this); }
 
 	PrintBase::SlicingStatus status;
+    std::uint64_t run_id;
 };
 
 class SlicingProcessCompletedEvent : public wxEvent
@@ -56,11 +59,12 @@ public:
 		Error
 	};
 
-	SlicingProcessCompletedEvent(wxEventType eventType, int winid, StatusType status, std::exception_ptr exception) :
-		wxEvent(winid, eventType), m_status(status), m_exception(exception) {}
+	SlicingProcessCompletedEvent(wxEventType eventType, int winid, StatusType status, std::exception_ptr exception, std::uint64_t run_id = 0) :
+		wxEvent(winid, eventType), m_status(status), m_exception(exception), m_run_id(run_id) {}
 	virtual wxEvent* Clone() const { return new SlicingProcessCompletedEvent(*this); }
 
 	StatusType 	status()    const { return m_status; }
+    std::uint64_t run_id() const { return m_run_id; }
 	bool 		finished()  const { return m_status == Finished; }
 	bool 		success()   const { return m_status == Finished; }
 	bool 		cancelled() const { return m_status == Cancelled; }
@@ -78,6 +82,7 @@ public:
 private:
 	StatusType 			m_status;
 	std::exception_ptr 	m_exception;
+    std::uint64_t m_run_id;
 };
 
 //BBS: move it to plater.hpp
@@ -141,6 +146,8 @@ public:
 
 	// Start the background processing. Returns false if the background processing was already running.
 	bool start();
+    // Correlate queued progress/completion events with the run that produced them.
+    std::uint64_t run_id() const { return m_run_id.load(); }
 	// Cancel the background processing. Returns false if the background processing was not running.
 	// A stopped background processing may be restarted with start().
 	bool stop();
@@ -270,6 +277,7 @@ private:
 	std::mutex 		 			m_mutex;
 	std::condition_variable		m_condition;
 	State 						m_state = STATE_INITIAL;
+    std::atomic<std::uint64_t> m_run_id {0};
 
 	// For executing tasks from the background thread on UI thread synchronously (waiting for result) using wxWidgets CallAfter().
 	// When the background proces is canceled, the UITask has to be invalidated as well, so that it will not be
