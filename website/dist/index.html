@@ -457,7 +457,7 @@ Install MCP and the skill with the provided scripts/agent/install.sh. Use the ap
 
 Ask which model and export folders I want to allow. Launch Orca with ORCA_AGENT_CONTROL=1 and those folders. Through MCP, check orca_list_instances, explicit window selection and available capabilities. A successful doctor check alone does not prove that an Orca window is connected.
 
-Do not enable ORCA_AGENT_PRINTING=1 or send anything to a printer during installation. Finish by reporting versions, the MCP executable location and verification results.</pre
+Do not send anything to a printer during installation. Finish by reporting versions, the MCP executable location and verification results.</pre
                 >
                 <div class="prompt-bottom">
                   A readable prompt. No hidden commands.
@@ -683,11 +683,12 @@ ORCA_AGENT_OUTPUT_ROOTS='["/Users/you/3D/exports"]' \
               <div>
                 <p>
                   No. The API is disabled on normal launches.
-                  <code>ORCA_AGENT_CONTROL=1</code> enables slicer control, and
-                  the selected folders limit file imports and exports. Sending
-                  jobs and controlling the device separately require
-                  <code>ORCA_AGENT_PRINTING=1</code> in Orca's environment. The
-                  installation prompt does not enable it.
+                  <code>ORCA_AGENT_CONTROL=1</code> enables slicer control, job
+                  submission and device control in current builds. Older builds may also require
+                  <code>ORCA_AGENT_PRINTING=1</code> at launch; check
+                  <code>transmission_enabled</code> in <code>printers.list</code>. The selected folders limit file
+                  imports and exports. Enabling control does not authorize sending
+                  a particular print job.
                 </p>
               </div>
             </details>

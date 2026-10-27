@@ -332,8 +332,8 @@ artifact hash and size, backend/device/transport, material/nozzle/options snapsh
 action and warning IDs. Up to 64 plans are retained. Post-processing scripts are
 rejected rather than implicitly executed by packaging.
 
-`printing.submit` additionally requires the owner to launch Orca with
-`ORCA_AGENT_PRINTING=1`. The exact plan warning IDs must be resolved. Native code
+`printing.submit` is available when the owner launches Orca with
+`ORCA_AGENT_CONTROL=1`. The exact plan warning IDs must be resolved. Native code
 rechecks the plan, source slice, frozen artifact, target credentials/options and
 backend/library generation. The backend/library is retained for the owned worker;
 UI selection cannot redirect an accepted plan. A durable claim consumes the plan
@@ -361,6 +361,13 @@ upload-only operation. `endpoint_mode` records explicit direct/queue/unknown con
 it does not prove the ultimate physical destination. A name such as “P1S Virtual”
 is not endpoint verification. Unknown routing and native warnings remain explicit
 in the plan and must not be turned into a promise that upload has no physical effect.
+BBL upload-only uses the native SendJob filename convention
+`Agent-<operation_id>.gcode.3mf`; Bambuddy requires the `.3mf` suffix to process
+an uploaded project. A successful FTP response can precede server-side processing,
+so it proves neither queue insertion nor physical start. Queue-mode results report
+`queue_state: unverified` unless independently correlated with the queue. Upload-only
+does not transmit a print-start command carrying AMS mapping; the endpoint may use
+another mapping when dispatching.
 
 `printers.control` currently exposes explicitly device-wide BBL LAN pause/resume/stop
 with a durable operation UUID. It can affect whichever task the endpoint currently
@@ -413,10 +420,15 @@ recreation. Compiler checks and transport tests do not substitute for those runs
 ## Device selection and materials
 
 `printers.select` selects an explicit active-backend device through the Device
-tab's native selection path. Selection is shared across windows of the process;
+tab's native selection path. When the selected device is disconnected, selecting
+it again follows that path to reconnect LAN or renew the cloud subscription;
+selection alone does not establish that telemetry is ready. Selection is shared
+across windows of the process;
 print plans still bind an explicit backend/device rather than UI selection.
 Nozzle sync is on by default and waits asynchronously for connected telemetry.
 `printers.sync_nozzle` retries synchronization for that same selected device.
+Telemetry readiness requires a complete push for that device less than 15 seconds
+old and the device version. Stale or future-dated pushes are not ready.
 The automatic path supports one installed nozzle without a rack, requires a
 matching printer profile, and uses native sidebar synchronization. It refuses
 unknown layouts and profile switches that would discard edited presets. A

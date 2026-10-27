@@ -19,7 +19,7 @@ ORCA_AGENT_OUTPUT_ROOTS='["/Users/your-name/Exports"]' \
 
 Replace the paths with your own; MCP cannot expand these permitted directories. Without them, file operations are rejected. If Orca is already running without AgentControl, close it and relaunch with the required environment: connecting MCP cannot change an existing process's environment variables.
 
-To submit jobs and control the device, also set `ORCA_AGENT_PRINTING=1` in the same Orca launch environment. This enables native access but does not replace the authorization rules for a particular job. For multiple processes, enable Orca's multiple-instance setting. The agent must select the full window UUID pair corresponding to the project.
+In current builds, `ORCA_AGENT_CONTROL=1` also enables native job submission and device control; older builds may additionally require `ORCA_AGENT_PRINTING=1` at launch. Check `printers.list` for `transmission_enabled`; it does not replace the authorization rules for a particular job. For multiple processes, enable Orca's multiple-instance setting. The agent must select the full window UUID pair corresponding to the project.
 
 ## MCP and skill
 

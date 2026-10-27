@@ -69,8 +69,7 @@ operations fail closed without them. For multiple processes, enable Orca's
 multiple-instance preference. Discovery uses private descriptors in the native
 data directory. Closed/stale endpoints are ignored; there is no target fallback.
 
-Print submissions and device controls additionally require `ORCA_AGENT_PRINTING=1`
-in Orca's environment. Preparing a plan has no upload side effects.
+In current builds, `ORCA_AGENT_CONTROL=1` also enables print submissions and device controls. Older builds may additionally require `ORCA_AGENT_PRINTING=1` at launch; inspect `printers.list` for `transmission_enabled`. Preparing a plan has no upload side effects.
 
 ## Tools and workflow
 
