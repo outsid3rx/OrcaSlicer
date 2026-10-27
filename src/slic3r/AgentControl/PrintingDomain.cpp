@@ -61,7 +61,7 @@ namespace {
 namespace fs=std::filesystem;
 using Clock=std::chrono::system_clock;
 std::string uuid() { return boost::uuids::to_string(boost::uuids::random_generator()()); }
-bool enabled() { const char* value=std::getenv("ORCA_AGENT_PRINTING");return value&&std::string(value)=="1"; }
+bool enabled() { const char* value=std::getenv("ORCA_AGENT_CONTROL");return value&&std::string(value)=="1"; }
 Json text_schema() { return {{"type","string"},{"minLength",1},{"maxLength",256}}; }
 Json choice(std::initializer_list<const char*> values) { Json v=Json::array();for(auto value:values)v.push_back(value);return {{"type","string"},{"enum",v}}; }
 std::string digest(const std::string& text) {
@@ -292,12 +292,14 @@ Json prepare(DomainContext& ctx,const Json& params) {
         if(item.level>0)plan->warnings.push_back(warning(item.error_code,item.msg));
     }
     if(plan->mode=="unknown")plan->warnings.push_back(warning("routing_unknown","Endpoint downstream routing and possible automatic printing are unknown, including for upload-only"));
-    if(plan->mode=="queue")plan->warnings.push_back(warning("endpoint_queue","Endpoint may enqueue or automatically print uploaded files; upload-only is not a no-print guarantee"));
+    if(plan->mode=="queue")plan->warnings.push_back(warning("endpoint_queue","A successful upload does not confirm that the endpoint added the file to its queue. The endpoint may enqueue or automatically print uploaded files."));
     plan->directory=private_root("ORCA_AGENT_PRINT_ARTIFACTS","agent-print-artifacts")/plan->id;
     PrintJournal privacy(plan->directory);
     if(plan->backend=="bbl") {
         for(const char* key:{"bed_leveling","flow_calibration","vibration_calibration","timelapse","use_ams"})
             if(!plan->options.contains(key))plan->options[key]=std::string(key)=="bed_leveling";
+        if(plan->action=="upload_only"&&plan->options.value("use_ams",false))
+            plan->warnings.push_back(warning("upload_ams_mapping_not_applied","Upload-only does not send a print-start command with the selected AMS mapping. The endpoint may select different slots downstream."));
         auto& device=machine(plan->backend,plan->device);auto validation=validate_bbl(device,config,plate,plan->options,plan->action);
         plan->agent=active_agent();ensure(bool(std::dynamic_pointer_cast<BBLPrinterAgent>(plan->agent)),"unsupported_backend","Only the native BBL agent implements this submission capability");plan->library_generation=BBLNetworkPlugin::instance().operation_generation();plan->params=validation.params;
         plan->machine_token=digest(validation.snapshot.dump());
@@ -305,7 +307,11 @@ Json prepare(DomainContext& ctx,const Json& params) {
         plan->artifact=plan->directory/(plan->id+".3mf");
         const int index=plate.get_index();
         ensure(ctx.plater.agent_export_print_artifact(boost::filesystem::path(plan->artifact.u8string()),index)==0,"export_failed","Native print artifact export failed");
-        plan->params.plate_index=index+1;plan->params.filename=plan->artifact.u8string();plan->params.project_name="Agent-"+plan->id;plan->params.task_name=plan->id;
+        plan->params.plate_index=index+1;plan->params.filename=plan->artifact.u8string();
+        // Match the native SendJob contract: receivers such as Bambuddy use the
+        // uploaded filename's .3mf suffix to decide whether to enqueue it.
+        plan->params.project_name="Agent-"+plan->id+(plan->action=="upload_only"?".gcode.3mf":"");
+        plan->params.task_name=plan->id;
         plan->summary={{"status",validation.snapshot["compatibility_status"]},{"model",validation.snapshot["target_model"]},{"nozzle_mm",validation.snapshot["nozzle_mm"]},{"material",validation.snapshot["material_type"]},{"used_filaments",validation.snapshot.value("used_filaments",Json::array())},{"multicolor",validation.snapshot.value("multicolor",false)},{"bed_type",validation.snapshot["bed_type"]}};
     } else {
         plan->host=configured_host(config);ensure(plan->host&&host_backend(*plan->host)==plan->backend&&host_id(*plan->host)==plan->device,"stale_device","Explicit host does not match the configured native endpoint");
@@ -334,7 +340,7 @@ struct Submission {
     std::shared_ptr<void> lease;
 };
 Json submit(DomainContext& ctx,const Json& params) {
-    ensure(enabled(),"printing_disabled","Owner must enable ORCA_AGENT_PRINTING=1 for transmission and device controls");
+    ensure(enabled(),"printing_disabled","Owner must enable ORCA_AGENT_CONTROL=1 for transmission and device controls");
     expire_plans();const std::string wanted=params.at("plan_id");auto found=plans().find(wanted);
     if(found==plans().end()) {
         Json previous=journal().read(wanted);
@@ -418,6 +424,7 @@ Json submit(DomainContext& ctx,const Json& params) {
                 state->outcome["remote_job_id"]=state->receipt.empty()?Json(nullptr):Json(state->receipt);
                 state->outcome["endpoint_mode"]=plan->mode;
                 state->outcome["downstream_printing"]="unverified";
+                if(plan->mode=="queue")state->outcome["queue_state"]="unverified";
                 if(!success)state->outcome["reason"]="Native call failed after possible transmission; retry is forbidden";
                 log.record_outcome(plan->id,state->outcome);
             } catch(...) {
@@ -440,7 +447,7 @@ Json submit(DomainContext& ctx,const Json& params) {
     return nullptr;
 }
 Json control(DomainContext& ctx,const Json& params) {
-    ensure(enabled(),"printing_disabled","Owner must enable ORCA_AGENT_PRINTING=1 for device controls");
+    ensure(enabled(),"printing_disabled","Owner must enable ORCA_AGENT_CONTROL=1 for device controls");
     const std::string backend=params.at("backend_id"),device=params.at("device_id"),action=params.at("action"),operation=params.at("operation_id");
     ensure(backend=="bbl","unsupported_backend","Device-wide controls require a captured native BBL LAN backend");
     auto& target=machine(backend,device);ensure(target.is_connected()&&target.is_lan_mode_printer(),"not_ready","Explicit device has no connected LAN channel");
@@ -495,8 +502,8 @@ CommandSpecs printing_commands() {
     Json ctrl=identity;ctrl["action"]=choice({"pause","resume","stop"});ctrl["scope"]=choice({"device"});
     ctrl["operation_id"]={{"type","string"},{"minLength",36},{"maxLength",36},{"pattern","^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}};
     specs["printers.control"]=command_spec(true,ctrl,{"backend_id","device_id","action","scope","operation_id"});
-    specs["printing.prepare"].schema["description"]="Prepare an immutable ten-minute plan without contacting the printer. BBL LAN start requires actual single-nozzle telemetry and native material/AMS rules for every used sliced filament; storage upload exposes incompatible or missing telemetry as explicit acknowledgement warnings. Generic PrintHost supports explicit upload only, with compatibility unverified. Endpoint queue or unknown routing can start downstream printing even for upload-only.";
-    specs["printing.submit"].schema["description"]="Consume a durable single-use print intent before one native transmission. Requires owner opt-in and exact plan warnings. No cloud fallback or automatic retry; acceptance/upload does not prove physical printing.";
+    specs["printing.prepare"].schema["description"]="Prepare an immutable ten-minute plan without contacting the printer. BBL LAN start requires actual single-nozzle telemetry and native material/AMS rules for every used sliced filament; storage upload exposes incompatible or missing telemetry as explicit acknowledgement warnings. Generic PrintHost supports explicit upload only, with compatibility unverified. Endpoint queue or unknown routing can start downstream printing even for upload-only; an upload success does not verify queue insertion.";
+    specs["printing.submit"].schema["description"]="Consume a durable single-use print intent before one native transmission. Requires owner opt-in and exact plan warnings. No cloud fallback or automatic retry; acceptance/upload does not prove queue insertion or physical printing.";
     specs["printers.control"].schema["description"]="Explicit device-wide BBL LAN pause/resume/stop, affecting whichever job the endpoint currently runs. This does not provide atomic job-scoped control. A durable operation UUID prevents retransmission.";
     return specs;
 }

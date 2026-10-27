@@ -222,9 +222,11 @@ Json execute_devices(DomainContext& ctx, const std::string& method, const Json& 
     if (method == "printers.select") {
         auto& devices = manager();
         auto* current = devices.get_selected_machine();
-        if (!current || current->get_dev_id() != device.get_dev_id()) {
+        if (!current || current->get_dev_id() != device.get_dev_id() || !device.is_connected()) {
             // Use the Device tab's complete synchronous selection path. The
             // public select_machine queues an event, too late for this result.
+            // Reselect a disconnected device too: the native path reconnects
+            // the same LAN printer or renews its cloud subscription.
             if (auto* monitor = GUI::MonitorPanel::if_built()) {
                 wxCommandEvent event(wxEVT_COMMAND_CHOICE_SELECTED);
                 event.SetString(wxString::FromUTF8(device.get_dev_id()));

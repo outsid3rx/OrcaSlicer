@@ -13,8 +13,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include <memory>
+#include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -93,6 +94,27 @@ std::string machine_list_response(const std::string& provider, const std::string
 }
 
 } // namespace
+
+TEST_CASE("Printer telemetry readiness expires after the push timeout", "[DeviceManager][integration]")
+{
+    MachineObject printer(nullptr, nullptr, "Test printer", "test-device", "");
+    CHECK_FALSE(printer.is_info_ready(false));
+
+    printer.m_push_count = 1;
+    printer.m_full_msg_count = 1;
+    printer.last_push_time = std::chrono::system_clock::now() - std::chrono::seconds(1);
+    CHECK(printer.is_info_ready(false));
+    CHECK_FALSE(printer.is_info_ready()); // A version is also required by default.
+
+    printer.last_push_time = std::chrono::system_clock::now() - std::chrono::seconds(14);
+    CHECK(printer.is_info_ready(false));
+    printer.last_push_time = std::chrono::system_clock::now() - std::chrono::seconds(16);
+    CHECK_FALSE(printer.is_info_ready(false));
+
+    // A clock adjustment must not make an unknown future timestamp look fresh.
+    printer.last_push_time = std::chrono::system_clock::now() + std::chrono::seconds(1);
+    CHECK_FALSE(printer.is_info_ready(false));
+}
 
 TEST_CASE("Network agent stamps user-machine responses with request context", "[DeviceManager][integration]")
 {

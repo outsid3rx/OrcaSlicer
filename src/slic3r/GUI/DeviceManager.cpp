@@ -2791,16 +2791,18 @@ bool MachineObject::is_info_ready(bool check_version) const
         return false;
     }
 
-    std::chrono::system_clock::time_point curr_time = std::chrono::system_clock::now();
-    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(last_push_time - curr_time);
-    if (m_full_msg_count > 0 && m_push_count > 0 && diff.count() < PUSHINFO_TIMEOUT) {
+    const auto now = std::chrono::system_clock::now();
+    const auto age = now - last_push_time;
+    const auto timeout = std::chrono::milliseconds(static_cast<int>(PUSHINFO_TIMEOUT));
+    if (m_full_msg_count > 0 && m_push_count > 0 &&
+        age >= std::chrono::system_clock::duration::zero() && age < timeout) {
         return true;
     }
 
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__
         << ": not ready, m_full_msg_count=" << m_full_msg_count
         << ", m_push_count=" << m_push_count
-        << ", diff.count()=" << diff.count()
+        << ", age_ms=" << std::chrono::duration_cast<std::chrono::milliseconds>(age).count()
         << ", dev_id=" << dev_id;
     return false;
 }
