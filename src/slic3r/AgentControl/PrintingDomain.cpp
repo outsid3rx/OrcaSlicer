@@ -18,7 +18,7 @@
 #include "slic3r/GUI/DeviceCore/DevDefs.h"
 #include "slic3r/GUI/DeviceCore/DevConfigUtil.h"
 #include "slic3r/GUI/DeviceCore/DevFilaSystem.h"
-#include "slic3r/GUI/DeviceCore/DevFilaBlacklist.h"
+#include "slic3r/GUI/DeviceCore/DevFilaBlackList.h"
 #include "slic3r/GUI/DeviceCore/DevFilaSwitch.h"
 #include "slic3r/GUI/DeviceCore/DevNozzleSystem.h"
 #include "slic3r/GUI/DeviceCore/DevStorage.h"

@@ -1,4 +1,4 @@
 # Fork release identity; leave upstream version.inc unchanged when releasing.
 # When merging upstream, pin the merged upstream commit and review fork_revision.
-fork_revision = 2
+fork_revision = 3
 upstream_commit = "0a00730dbba36a598d7b66fd2d8972ba860286d9"

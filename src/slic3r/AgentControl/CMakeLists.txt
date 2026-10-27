@@ -16,5 +16,5 @@ target_sources(libslic3r_gui PRIVATE
 target_compile_definitions(libslic3r_gui PUBLIC SLIC3R_AGENT_CONTROL)
 
 if (WIN32)
-    target_link_libraries(libslic3r_gui PRIVATE advapi32 ws2_32 mswsock)
+    target_link_libraries(libslic3r_gui advapi32 ws2_32 mswsock)
 endif ()
