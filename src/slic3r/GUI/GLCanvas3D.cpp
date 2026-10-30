@@ -120,6 +120,10 @@
 #include "slic3r/Utils/RetinaHelper.hpp"
 #endif
 
+#ifdef __APPLE__
+#include "MacIME.hpp"
+#endif
+
 #include <glad/gl.h>
 
 #include <wx/glcanvas.h>
@@ -1959,6 +1963,14 @@ static std::pair<bool, bool> construct_extruder_unprintable_error(ObjectFilament
                          %format_number(right_x_min) %format_number(right_x_max) %format_number(right_y_min)
                          %format_number(right_y_max) %format_number(right_z_min) %format_number(right_z_max)).str();
         output_text = tips[idx];
+    }
+
+    // Conflicts on extruders beyond the left/right pair (3+ tool machines) have
+    // no bucket above; without a message the slice would be blocked silently.
+    if (left_unprintable_objects.empty() && right_unprintable_objects.empty()) {
+        left_extruder_unprintable_text = _u8L("The position or size of some models exceeds the assigned extruder's printable range. "
+                                              "Please check and adjust the part's position or size to fit the printable range.");
+        return { true, false };
     }
 
     return { !left_unprintable_objects.empty(),!right_unprintable_objects.empty() };
@@ -3906,9 +3918,29 @@ void GLCanvas3D::bind_event_handlers()
                     finish_selection_edit();
                 release_held_modifiers();
                 wxGetApp().imgui()->forget_key_claims();
+#ifdef __APPLE__
+                // ImGuiWrapper stops updating the view once it is no longer the IME target.
+                if (ImGui::GetIO().ImeWindowHandle == m_canvas->GetHandle()) {
+                    mac_ime_set_active(m_canvas->GetHandle(), false);
+                    ImGui::GetIO().ImeWindowHandle = nullptr;
+                }
+#endif
                 ImGui::SetWindowFocus(nullptr);
                 render();
                 evt.Skip();
+            });
+        // ORCA If the mouse capture is lost while a button is held (Alt+Tab, dialog, lock screen), the button-up
+        // never arrives and ImGui keeps the widget active. Cancel the interaction: clear the active widget
+        // before releasing the buttons so the release is not taken as a click.
+        m_canvas->Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent&) {
+                if (GImGui != nullptr) {
+                    ImGui::ClearActiveID();
+                    ImGuiIO& io = ImGui::GetIO();
+                    for (bool& down : io.MouseDown)
+                        down = false;
+                }
+                m_navigator_dragging = false;
+                render();
             });
         m_event_handlers_bound = true;
 
@@ -4189,15 +4221,11 @@ bool GLCanvas3D::handle_shortcut(const KeyChord& chord)
         m_dirty = true;
         break;
     case Shortcut::Mouse3DSettings: {
-#ifdef _WIN32
-        if (wxGetApp().app_config->get("use_legacy_3DConnexion") == "true") {
-#endif //_WIN32
-            Mouse3DController& controller = wxGetApp().plater()->get_mouse3d_controller();
+        Mouse3DController& controller = wxGetApp().plater()->get_mouse3d_controller();
+        if (controller.can_show_settings_dialog()) {
             controller.show_settings_dialog(!controller.is_settings_dialog_shown());
             m_dirty = true;
-#ifdef _WIN32
         }
-#endif //_WIN32
         break;
     }
     case Shortcut::ReloadDevicePage:
@@ -4348,6 +4376,12 @@ void GLCanvas3D::release_held_modifiers()
 
 void GLCanvas3D::on_key(wxKeyEvent& evt)
 {
+#ifdef __APPLE__
+    // A key the input method used for a composition must not also edit the text field: Esc would revert
+    // it, Backspace delete a character, Enter add a line.
+    if (evt.GetEventType() == wxEVT_KEY_DOWN && mac_ime_owns_key(m_canvas->GetHandle()))
+        return;
+#endif
 
     auto       imgui         = wxGetApp().imgui();
     const int  keyCode       = evt.GetKeyCode();
@@ -5518,6 +5552,10 @@ void GLCanvas3D::force_set_focus() {
 
 void GLCanvas3D::on_set_focus(wxFocusEvent& evt)
 {
+#ifdef __APPLE__
+    // The focused canvas is the one whose view takes input-method text (see ImGuiWrapper::end_frame()).
+    ImGui::GetIO().ImeWindowHandle = m_canvas->GetHandle();
+#endif
     m_tooltip_enabled = false;
     _refresh_if_shown_on_screen();
     m_tooltip_enabled = true;
@@ -12352,9 +12390,10 @@ void GLCanvas3D::_set_warning_notification(EWarning warning, bool state)
                 extruder_name += (boost::format(_u8L("Tool %d"))%extruder_id).str();
             }
 
-            text += (boost::format(into_u8(_L_PLURAL("Filament %s is placed in the %s, but the generated G-code path exceeds the printable range of the %s.",
-                                                     "Filaments %s are placed in the %s, but the generated G-code path exceeds the printable range of the %s.",
-                                                     error_iter->second.size()))) %filaments %extruder_name %extruder_name).str();
+            text += format(_L_PLURAL("Filament %1% is placed in the %2%, but the generated G-code path exceeds the printable range of the %2%.",
+                                     "Filaments %1% are placed in the %2%, but the generated G-code path exceeds the printable range of the %2%.",
+                                     error_iter->second.size()),
+                           filaments, extruder_name);
         }
         error = ErrorType::SLICING_LIMIT_ERROR;
         break;
@@ -12402,9 +12441,10 @@ void GLCanvas3D::_set_warning_notification(EWarning warning, bool state)
                 }
             }
             std::string extruder_name = extruder_name_list[extruder_id-1];
-            text += (boost::format(into_u8(_L_PLURAL("Filament %s is placed in the %s, but the generated G-code path exceeds the printable height of the %s.",
-                                                     "Filaments %s are placed in the %s, but the generated G-code path exceeds the printable height of the %s.",
-                                                     filament_ids.size()))) % filaments % extruder_name % extruder_name).str();
+            text += format(_L_PLURAL("Filament %1% is placed in the %2%, but the generated G-code path exceeds the printable height of the %2%.",
+                                     "Filaments %1% are placed in the %2%, but the generated G-code path exceeds the printable height of the %2%.",
+                                     filament_ids.size()),
+                           filaments, extruder_name);
         }
         if (!text.empty()) {
             text += "\n";
@@ -12569,7 +12609,9 @@ void GLCanvas3D::_set_warning_notification(EWarning warning, bool state)
                     try_pop_up_before_slice(false, plater, partplate, true); // ignore the return value
                     return false;
                 };
-                notification_manager.push_slicing_customize_error_notification(NotificationType::BBLFilamentPrintableError, NotificationLevel::ErrorNotificationLevel, text,  _u8L("Click here to regroup"), callback);
+                // Only Bambu printers can regroup; without the link the callback is unreachable.
+                const std::string regroup = wxGetApp().preset_bundle->is_bbl_vendor() ? _u8L("Click here to regroup") : "";
+                notification_manager.push_slicing_customize_error_notification(NotificationType::BBLFilamentPrintableError, NotificationLevel::ErrorNotificationLevel, text,  regroup, callback);
             }
             else
                 notification_manager.close_slicing_customize_error_notification(NotificationType::BBLFilamentPrintableError, NotificationLevel::ErrorNotificationLevel);
